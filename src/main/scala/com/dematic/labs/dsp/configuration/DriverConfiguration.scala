@@ -6,45 +6,45 @@ class DriverConfiguration {
   private val config = ConfigFactory.load()
 
   object Driver {
-    val AppNameProperty = "driver.appName"
-    val MasterUrlProperty = "driver.masterUrl"
+    val AppNameKey = "driver.appName"
+    val MasterUrlKey = "driver.masterUrl"
 
-    lazy val appName: String = config.getString(AppNameProperty)
-    lazy val masterUrl: String = config.getString(MasterUrlProperty)
+    lazy val appName: String = config.getString(AppNameKey)
+    lazy val masterUrl: String = config.getString(MasterUrlKey)
   }
 
   object Spark {
-    val CheckpointDirProperty = "spark.checkpoint.dir"
-    val SqlShufflePartitionProperty = "sql.shuffle.partition"
-    val OutputModeProperty = "output.mode"
-    val WatermarkTimeProperty = "watermark.time"
-    val QueryTriggerProperty = "query.trigger"
+    val CheckpointLocationKey = "spark.sql.streaming.checkpointLocation"
+    val SqlShufflePartitionKey = "sql.shuffle.partition"
+    val OutputModeKey = "output.mode"
+    val WatermarkTimeKey = "watermark.time"
+    val QueryTriggerKey = "query.trigger"
 
-    lazy val checkpointDir: String = config.getString(CheckpointDirProperty)
-    lazy val sqlShufflePartition: String = config.getString(SqlShufflePartitionProperty)
-    lazy val outputMode: String = config.getString(OutputModeProperty)
-    lazy val watermarkTime: String = config.getString(WatermarkTimeProperty)
-    lazy val queryTrigger: String = config.getString(QueryTriggerProperty)
+    lazy val checkpointLocation: String = config.getString(CheckpointLocationKey)
+    lazy val sqlShufflePartition: String = config.getString(SqlShufflePartitionKey)
+    lazy val outputMode: String = config.getString(OutputModeKey)
+    lazy val watermarkTime: String = config.getString(WatermarkTimeKey)
+    lazy val queryTrigger: String = config.getString(QueryTriggerKey)
   }
 
   object Kafka {
-    val TopicSubscriptionProperty = "subscribe"
-    val BootstrapServersProperty = "kafka.bootstrap.servers"
-    val TopicsProperty = "kafka.topics"
-    val StartingOffsetsProperty = "startingOffsets"
+    val TopicSubscriptionKey = "subscribe"
+    val BootstrapServersKey = "kafka.bootstrap.servers"
+    val TopicsKey = "kafka.topics"
+    val StartingOffsetsKey = "startingOffsets"
 
-    lazy val bootstrapServers: String = config.getString(BootstrapServersProperty)
-    lazy val topics: String = config.getString(TopicsProperty)
-    lazy val startingOffsets: String = config.getString(StartingOffsetsProperty)
+    lazy val bootstrapServers: String = config.getString(BootstrapServersKey)
+    lazy val topics: String = config.getString(TopicsKey)
+    lazy val startingOffsets: String = config.getString(StartingOffsetsKey)
 
     def format() = "kafka"
   }
 
   object Cassandra {
-    val UsernameProperty = "cassandra.username"
-    val PasswordProperty = "cassandra.password"
+    val UsernameKey = "cassandra.username"
+    val PasswordKey = "cassandra.password"
 
-    lazy val username: String = config.getString(UsernameProperty)
-    lazy val password: String = config.getString(PasswordProperty)
+    lazy val username: String = config.getString(UsernameKey)
+    lazy val password: String = config.getString(PasswordKey)
   }
 }
