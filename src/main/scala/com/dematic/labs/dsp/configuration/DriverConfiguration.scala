@@ -28,12 +28,16 @@ class DriverConfiguration {
   }
 
   object Kafka {
-    val BootstrapServersProperty = "kafka.bootstrapServers"
+    val TopicSubscriptionProperty = "subscribe"
+    val BootstrapServersProperty = "kafka.bootstrap.servers"
     val TopicsProperty = "kafka.topics"
-
+    val StartingOffsetsProperty = "startingOffsets"
 
     lazy val bootstrapServers: String = config.getString(BootstrapServersProperty)
     lazy val topics: String = config.getString(TopicsProperty)
+    lazy val startingOffsets: String = config.getString(StartingOffsetsProperty)
+
+    def format() = "kafka"
   }
 
   object Cassandra {
