@@ -13,7 +13,7 @@ object CumulativeCount {
 
     // create the spark session
     val builder: SparkSession.Builder = SparkSession.builder
-    val masterUrl = config.Driver.masterUrl
+    val masterUrl = config.Spark.masterUrl
     if (!Strings.isNullOrEmpty(masterUrl)) builder.master(masterUrl)
     builder.appName(config.Driver.appName)
     val spark: SparkSession = builder.getOrCreate

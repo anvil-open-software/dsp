@@ -150,6 +150,13 @@
             <artifactId>guava</artifactId>
             <version>18.0</version>
         </dependency>
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_2.11</artifactId>
+            <version>3.0.3</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 

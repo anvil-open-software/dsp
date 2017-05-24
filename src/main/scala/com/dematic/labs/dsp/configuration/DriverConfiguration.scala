@@ -7,19 +7,18 @@ class DriverConfiguration {
 
   object Driver {
     val AppNameKey = "driver.appName"
-    val MasterUrlKey = "driver.masterUrl"
-
     lazy val appName: String = config.getString(AppNameKey)
-    lazy val masterUrl: String = config.getString(MasterUrlKey)
   }
 
   object Spark {
+    val MasterKey = "spark.master"
     val CheckpointLocationKey = "spark.sql.streaming.checkpointLocation"
-    val SqlShufflePartitionKey = "sql.shuffle.partition"
-    val OutputModeKey = "output.mode"
-    val WatermarkTimeKey = "watermark.time"
-    val QueryTriggerKey = "query.trigger"
+    val SqlShufflePartitionKey = "spark.sql.shuffle.partition"
+    val OutputModeKey = "spark.output.mode"
+    val WatermarkTimeKey = "spark.watermark.time"
+    val QueryTriggerKey = "spark.query.trigger"
 
+    lazy val masterUrl: String = config.getString(MasterKey)
     lazy val checkpointLocation: String = config.getString(CheckpointLocationKey)
     lazy val sqlShufflePartition: String = config.getString(SqlShufflePartitionKey)
     lazy val outputMode: String = config.getString(OutputModeKey)
@@ -28,15 +27,15 @@ class DriverConfiguration {
   }
 
   object Kafka {
-    val TopicSubscriptionKey = "subscribe"
+    val TopicSubscriptionKey = "kafka.subscribe"
     val BootstrapServersKey = "kafka.bootstrap.servers"
     val TopicsKey = "kafka.topics"
-    val StartingOffsetsKey = "startingOffsets"
-    val KeySerializerKey = "key.serializer"
-    val ValueSerializeKey = "value.serializer"
-    val AcksKey = "acks"
-    val ProducerTypeKey = "producer.type"
-    val RetriesKey = "retries"
+    val StartingOffsetsKey = "kafka.startingOffsets"
+    val KeySerializerKey = "kafka.key.serializer"
+    val ValueSerializeKey = "kafka.value.serializer"
+    val AcksKey = "kafka.acks"
+    val ProducerTypeKey = "kafka.producer.type"
+    val RetriesKey = "kafka.retries"
 
     lazy val bootstrapServers: String = config.getString(BootstrapServersKey)
     lazy val topics: String = config.getString(TopicsKey)
