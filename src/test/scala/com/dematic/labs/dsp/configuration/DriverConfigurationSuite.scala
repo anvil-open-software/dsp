@@ -8,6 +8,6 @@ class DriverConfigurationSuite extends FunSuite {
     // driver properties
     assert("CumulativeCount" === config.Driver.appName)
     // spark properties
-    assert("" === config.Spark.masterUrl)
+    assert("local[*]" === config.Spark.masterUrl)
   }
 }
