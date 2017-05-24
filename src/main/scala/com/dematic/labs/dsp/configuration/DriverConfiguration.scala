@@ -32,10 +32,20 @@ class DriverConfiguration {
     val BootstrapServersKey = "kafka.bootstrap.servers"
     val TopicsKey = "kafka.topics"
     val StartingOffsetsKey = "startingOffsets"
+    val KeySerializerKey = "key.serializer"
+    val ValueSerializeKey = "value.serializer"
+    val AcksKey = "acks"
+    val ProducerTypeKey = "producer.type"
+    val RetriesKey = "retries"
 
     lazy val bootstrapServers: String = config.getString(BootstrapServersKey)
     lazy val topics: String = config.getString(TopicsKey)
     lazy val startingOffsets: String = config.getString(StartingOffsetsKey)
+    lazy val keySerializer: String = config.getString(KeySerializerKey)
+    lazy val valueSerializer: String = config.getString(ValueSerializeKey)
+    lazy val acks: String = config.getString(AcksKey)
+    lazy val producerType: String = config.getString(ProducerTypeKey)
+    lazy val retries: String = config.getString(RetriesKey)
 
     def format() = "kafka"
   }
