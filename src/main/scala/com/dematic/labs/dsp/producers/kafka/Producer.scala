@@ -32,7 +32,6 @@ case class Producer(configuration: DriverConfiguration) {
       case e: Exception =>
         //todo: figure out what to do
         e.printStackTrace()
-        System.exit(1)
     }
   }
 
