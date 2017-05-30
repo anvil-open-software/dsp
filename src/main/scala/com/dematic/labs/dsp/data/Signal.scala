@@ -1,4 +1,4 @@
-package com.dematic.labs.dsp.producers
+package com.dematic.labs.dsp.data
 
 import scala.beans.BeanProperty
 
