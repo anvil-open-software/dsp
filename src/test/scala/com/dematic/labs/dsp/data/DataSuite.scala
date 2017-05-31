@@ -1,6 +1,5 @@
 package com.dematic.labs.dsp.data
 
-import java.sql.Timestamp
 import java.time.Instant
 
 import org.scalatest.FunSuite
