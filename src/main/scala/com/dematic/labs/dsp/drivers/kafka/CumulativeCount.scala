@@ -7,7 +7,7 @@ import org.apache.spark.sql.streaming.OutputMode.Complete
 import org.apache.spark.sql.streaming.ProcessingTime
 
 object CumulativeCount {
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]) {
     // application specific configuration is set using system property, ex: -Dconfig.file=pathTo/application.conf
     val config = new DriverConfiguration
 
@@ -22,7 +22,7 @@ object CumulativeCount {
     val kafka = spark.readStream
       .format(config.Kafka.format())
       .option(config.Kafka.BootstrapServersKey, config.Kafka.bootstrapServers)
-      .option(config.Kafka.TopicsKey, config.Kafka.topics)
+      .option(config.Kafka.subscribe, config.Kafka.topics)
       .option(config.Kafka.TopicSubscriptionKey, config.Kafka.startingOffsets)
       .load
 

@@ -27,9 +27,9 @@ class DriverConfiguration {
   }
 
   object Kafka {
-    val TopicSubscriptionKey = "kafka.subscribe"
     val BootstrapServersKey = "kafka.bootstrap.servers"
     val TopicsKey = "kafka.topics"
+    val TopicSubscriptionKey = "kafka.subscribe"
     val StartingOffsetsKey = "kafka.startingOffsets"
     val KeySerializerKey = "kafka.key.serializer"
     val ValueSerializeKey = "kafka.value.serializer"
@@ -39,6 +39,7 @@ class DriverConfiguration {
 
     lazy val bootstrapServers: String = config.getString(BootstrapServersKey)
     lazy val topics: String = config.getString(TopicsKey)
+    lazy val subscribe: String = config.getString(TopicSubscriptionKey)
     lazy val startingOffsets: String = config.getString(StartingOffsetsKey)
     lazy val keySerializer: String = config.getString(KeySerializerKey)
     lazy val valueSerializer: String = config.getString(ValueSerializeKey)
