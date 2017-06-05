@@ -10,18 +10,17 @@ import scala.concurrent.Promise
 case class Producer(configuration: DriverConfiguration) {
   private val kafkaProps = new Properties()
   // required configuration
-  kafkaProps.put(configuration.Kafka.BootstrapServersKey, configuration.Kafka.bootstrapServers)
-  kafkaProps.put(configuration.Kafka.KeySerializerKey, configuration.Kafka.keySerializer)
-  kafkaProps.put(configuration.Kafka.ValueSerializeKey, configuration.Kafka.valueSerializer)
-  kafkaProps.put(configuration.Kafka.AcksKey, configuration.Kafka.acks)
-  kafkaProps.put(configuration.Kafka.ProducerTypeKey, configuration.Kafka.producerType)
-  kafkaProps.put(configuration.Kafka.RetriesKey, configuration.Kafka.retries)
+  kafkaProps.put("bootstrap.servers", configuration.Kafka.bootstrapServers)
+  kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+  kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+  kafkaProps.put("producerType", "sync")
+  kafkaProps.put("retries", "3")
 
   // connection to Kafka!
   private val producer = new KafkaProducer[String, String](kafkaProps)
 
   def send(value: String) {
-    if (configuration.Kafka.producerType == "sync") sendSync(value) else sendAsync(value)
+    if ("producerType" == "sync") sendSync(value) else sendAsync(value)
   }
 
   def sendSync(value: String) {
