@@ -1,6 +1,7 @@
 package com.dematic.labs.dsp.producers.kafka
 
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.dsp.configuration.DriverConfiguration
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
@@ -13,6 +14,7 @@ case class Producer(configuration: DriverConfiguration) {
   kafkaProps.put("bootstrap.servers", configuration.Kafka.bootstrapServers)
   kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
   kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+  kafkaProps.put("acks", "all")
   kafkaProps.put("producerType", "sync")
   kafkaProps.put("retries", "3")
 
@@ -44,5 +46,9 @@ case class Producer(configuration: DriverConfiguration) {
     })
   }
 
-  def close(): Unit = producer.close()
+  // will wait for 60 seconds, to ensure all msgs are sent, if there are still pending msgs, they will be dropped
+  def close() {
+    producer.flush()
+    producer.close(60, TimeUnit.SECONDS)
+  }
 }
