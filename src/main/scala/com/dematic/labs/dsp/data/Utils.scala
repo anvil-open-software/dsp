@@ -1,5 +1,7 @@
 package com.dematic.labs.dsp.data
 
+import java.nio.charset.Charset
+
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
@@ -21,5 +23,9 @@ object Utils {
 
   def fromJson[T](json: String)(implicit m: Manifest[T]): T = {
     mapper.readValue[T](json)
+  }
+
+  def toBytes(json: String): Array[Byte] = {
+    json.getBytes(Charset.defaultCharset())
   }
 }

@@ -8,7 +8,7 @@ import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecor
 import scala.concurrent.Promise
 
 case class Producer(configuration: DriverConfiguration) {
-  val kafkaProps = new Properties()
+  private val kafkaProps = new Properties()
   // required configuration
   kafkaProps.put(configuration.Kafka.BootstrapServersKey, configuration.Kafka.bootstrapServers)
   kafkaProps.put(configuration.Kafka.KeySerializerKey, configuration.Kafka.keySerializer)

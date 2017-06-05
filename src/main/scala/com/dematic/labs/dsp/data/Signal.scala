@@ -11,7 +11,10 @@ class Signal(@BeanProperty var id: String, @BeanProperty var value: String, @Bea
       that.timestamp == this.timestamp
     case _ => false
   }
+
   def canEqual(other: Any): Boolean = other.isInstanceOf[Signal]
+
   override def hashCode(): Int = MurmurHash3.seqHash(List(id, value, timestamp))
+
   override def toString: String = String format("%s, %s, %s", id, value, timestamp)
 }
