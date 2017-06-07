@@ -31,8 +31,7 @@ case class Producer(configuration: DriverConfiguration) {
       producer.send(record).get()
     } catch {
       case e: Exception =>
-        //todo: figure out what to do
-        e.printStackTrace()
+        println(s"Unexpected Error\n: ${e.printStackTrace()}")
     }
   }
 

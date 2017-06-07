@@ -44,7 +44,7 @@ object Throughput extends App {
     }
     // only print exception if, something goes wrong
     result onFailure {
-      case t => println(s"Unexpected Error: ${t.printStackTrace()}")
+      case t => println(s"Unexpected Error:\n ${t.printStackTrace()}")
     }
   }
   producer.close()

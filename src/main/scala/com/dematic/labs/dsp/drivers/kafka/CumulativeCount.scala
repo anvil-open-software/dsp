@@ -8,7 +8,7 @@ import org.apache.spark.sql.streaming.ProcessingTime
 
 /** Setting the system property to define the configuration file:
   *
-  * -Dconfig.file = path/to/file/application.conf
+  * -Dconfig.file=path/to/file/application.conf
   */
 object CumulativeCount {
   def main(args: Array[String]) {
