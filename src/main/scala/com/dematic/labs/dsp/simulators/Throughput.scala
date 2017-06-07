@@ -14,7 +14,7 @@ import scala.util.Random
 
 /**
   * Will push random signal objects as JSON to the configured Kafka Broker for a fixed about of time. Application
-  * takes 2 parameters: duration timeInMinutes, unique producer name
+  * takes 2 parameters: duration timeInMinutes, unique producer name.
   *
   * For example: 3 producer_1 // application will execute for 3 minutes and its unique name is producer_1
   */
