@@ -6,9 +6,12 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.streaming.OutputMode.Complete
 import org.apache.spark.sql.streaming.ProcessingTime
 
+/** Setting the system property to define the configuration file:
+  *
+  * -Dconfig.file=path/to/file/application.conf
+  */
 object CumulativeCount {
-  def main(args: Array[String]): Unit = {
-    // application specific configuration is set using system property, ex: -Dconfig.file=pathTo/application.conf
+  def main(args: Array[String]) {
     val config = new DriverConfiguration
 
     // create the spark session
@@ -22,7 +25,7 @@ object CumulativeCount {
     val kafka = spark.readStream
       .format(config.Kafka.format())
       .option(config.Kafka.BootstrapServersKey, config.Kafka.bootstrapServers)
-      .option(config.Kafka.TopicsKey, config.Kafka.topics)
+      .option(config.Kafka.subscribe, config.Kafka.topics)
       .option(config.Kafka.TopicSubscriptionKey, config.Kafka.startingOffsets)
       .load
 
@@ -36,7 +39,7 @@ object CumulativeCount {
       .format("console")
       .trigger(ProcessingTime(config.Spark.queryTrigger))
       .option(config.Spark.CheckpointLocationKey, config.Spark.checkpointLocation)
-      .queryName("total count")
+      .queryName("total_count")
       .outputMode(Complete)
       .start
     // 3) continue to run and wait for termination

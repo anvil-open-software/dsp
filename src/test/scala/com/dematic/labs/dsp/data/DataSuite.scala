@@ -6,7 +6,7 @@ import org.scalatest.FunSuite
 
 class DataSuite extends FunSuite {
   test("signal to json, json to signal") {
-    val signal = new Signal("123", "5555", Instant.now().toString)
+    val signal = new Signal(123, 5555, Instant.now().toString, "DataSuite")
     val toJson = Utils.toJson(signal)
     val fromJson = Utils.fromJson[Signal](toJson)
     assert(signal === fromJson)

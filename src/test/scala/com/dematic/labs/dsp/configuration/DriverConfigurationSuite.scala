@@ -18,7 +18,5 @@ class DriverConfigurationSuite extends FunSuite {
     assert("localhost:9092" === config.Kafka.bootstrapServers)
     // from application.conf
     assert("test" === config.Kafka.topics)
-    // from reference.conf
-    assert("3" === config.Kafka.retries)
   }
 }

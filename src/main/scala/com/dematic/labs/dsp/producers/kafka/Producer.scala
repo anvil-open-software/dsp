@@ -1,6 +1,7 @@
 package com.dematic.labs.dsp.producers.kafka
 
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.dsp.configuration.DriverConfiguration
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
@@ -8,20 +9,20 @@ import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecor
 import scala.concurrent.Promise
 
 case class Producer(configuration: DriverConfiguration) {
-  val kafkaProps = new Properties()
+  private val kafkaProps = new Properties()
   // required configuration
-  kafkaProps.put(configuration.Kafka.BootstrapServersKey, configuration.Kafka.bootstrapServers)
-  kafkaProps.put(configuration.Kafka.KeySerializerKey, configuration.Kafka.keySerializer)
-  kafkaProps.put(configuration.Kafka.ValueSerializeKey, configuration.Kafka.valueSerializer)
-  kafkaProps.put(configuration.Kafka.AcksKey, configuration.Kafka.acks)
-  kafkaProps.put(configuration.Kafka.ProducerTypeKey, configuration.Kafka.producerType)
-  kafkaProps.put(configuration.Kafka.RetriesKey, configuration.Kafka.retries)
+  kafkaProps.put("bootstrap.servers", configuration.Kafka.bootstrapServers)
+  kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+  kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+  kafkaProps.put("acks", "all")
+  kafkaProps.put("producerType", "sync")
+  kafkaProps.put("retries", "3")
 
   // connection to Kafka!
   private val producer = new KafkaProducer[String, String](kafkaProps)
 
   def send(value: String) {
-    if (configuration.Kafka.producerType == "sync") sendSync(value) else sendAsync(value)
+    if ("producerType" == "sync") sendSync(value) else sendAsync(value)
   }
 
   def sendSync(value: String) {
@@ -30,8 +31,7 @@ case class Producer(configuration: DriverConfiguration) {
       producer.send(record).get()
     } catch {
       case e: Exception =>
-        //todo: figure out what to do
-        e.printStackTrace()
+        println(s"Unexpected Error\n: ${e.printStackTrace()}")
     }
   }
 
@@ -45,5 +45,9 @@ case class Producer(configuration: DriverConfiguration) {
     })
   }
 
-  def close(): Unit = producer.close()
+  // will wait for 30 seconds, to ensure all msgs are sent, if there are still pending msgs, they will be dropped
+  def close() {
+    producer.flush()
+    producer.close(30, TimeUnit.SECONDS)
+  }
 }
