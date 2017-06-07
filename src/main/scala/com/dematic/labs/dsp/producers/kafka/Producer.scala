@@ -45,9 +45,9 @@ case class Producer(configuration: DriverConfiguration) {
     })
   }
 
-  // will wait for 60 seconds, to ensure all msgs are sent, if there are still pending msgs, they will be dropped
+  // will wait for 30 seconds, to ensure all msgs are sent, if there are still pending msgs, they will be dropped
   def close() {
     producer.flush()
-    producer.close(60, TimeUnit.SECONDS)
+    producer.close(30, TimeUnit.SECONDS)
   }
 }
