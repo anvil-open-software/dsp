@@ -18,9 +18,8 @@ object Throughput extends App {
   val config = new DriverConfiguration
   // overridden value specific to producer
   val generatorId = s"${config.Driver.appName}${args(1)}"
-
   val producer = Producer(config)
-  // generated values
+  // generated ids
   private val nextId = {
     var id: Long = 1
     () => {
@@ -28,6 +27,7 @@ object Throughput extends App {
       id
     }
   }
+  // generated values
   private val nextRandomValue = {
     val random = new Random
     () => {
