@@ -4,21 +4,21 @@ import org.scalatest.FunSuite
 
 class DriverConfigurationSuite extends FunSuite {
   test("override reference.conf properties via application.conf") {
-    val config = new DriverConfiguration
+ //   val config = new DriverConfiguration
     // driver properties
     // from application.conf
-    assert("CumulativeCount" === config.Driver.appName)
+    assert("CumulativeCount" === DriverConfiguration.Driver.appName)
     // spark properties
     // from application.conf
-    assert("local[*]" === config.Spark.masterUrl)
+    assert("local[*]" === DriverConfiguration.Spark.masterUrl)
     // from application.conf
-    assert("/tmp/checkpoint" === config.Spark.checkpointLocation)
+    assert("/tmp/checkpoint" === DriverConfiguration.Spark.checkpointLocation)
     // from reference.conf
-    assert("0 seconds" === config.Spark.queryTrigger)
+    assert("0 seconds" === DriverConfiguration.Spark.queryTrigger)
     // kafka properties
     // from application.conf
-    assert("localhost:9092" === config.Kafka.bootstrapServers)
+    assert("localhost:9092" === DriverConfiguration.Kafka.bootstrapServers)
     // from application.conf
-    assert("test" === config.Kafka.topics)
+    assert("test" === DriverConfiguration.Kafka.topics)
   }
 }
