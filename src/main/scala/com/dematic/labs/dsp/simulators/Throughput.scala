@@ -4,7 +4,7 @@ import java.time.Instant
 import java.util.concurrent.ThreadPoolExecutor.DiscardPolicy
 import java.util.concurrent.{Executors, LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
 
-import com.dematic.labs.dsp.configuration.DriverConfiguration
+import com.dematic.labs.dsp.configuration.DriverConfiguration._
 import com.dematic.labs.dsp.data.Utils.toJson
 import com.dematic.labs.dsp.data.{CountdownTimer, Signal}
 import com.dematic.labs.dsp.producers.kafka.Producer
@@ -21,11 +21,8 @@ import scala.util.Random
 object Throughput extends App {
   // define how long to run the throughput simulator
   CountdownTimer.countDown(args(0).toInt)
-  // configuration
-  val config = new DriverConfiguration
   // overridden value specific to producer
-  val generatorId = s"${config.Driver.appName}${args(1)}"
-  val producer = Producer(config)
+  val generatorId = s"${Driver.appName}${args(1)}"
   // generated ids
   private val nextId = {
     var id: Long = 1
@@ -53,6 +50,7 @@ object Throughput extends App {
   implicit val ec = ExecutionContext.fromExecutorService(executorService)
 
   // fire and forget, until timer is finished
+  val producer = new Producer
   try {
     while (!CountdownTimer.isFinished) {
       val result = Future {

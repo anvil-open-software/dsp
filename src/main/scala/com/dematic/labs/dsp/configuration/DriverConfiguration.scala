@@ -2,7 +2,7 @@ package com.dematic.labs.dsp.configuration
 
 import com.typesafe.config._
 
-class DriverConfiguration {
+object DriverConfiguration {
   private val config = ConfigFactory.load()
 
   object Driver {

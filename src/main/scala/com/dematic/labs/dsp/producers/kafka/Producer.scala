@@ -3,15 +3,15 @@ package com.dematic.labs.dsp.producers.kafka
 import java.util.Properties
 import java.util.concurrent.TimeUnit
 
-import com.dematic.labs.dsp.configuration.DriverConfiguration
+import com.dematic.labs.dsp.configuration.DriverConfiguration._
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 
 import scala.concurrent.Promise
 
-case class Producer(configuration: DriverConfiguration) {
+class Producer {
   private val kafkaProps = new Properties()
   // required configuration
-  kafkaProps.put("bootstrap.servers", configuration.Kafka.bootstrapServers)
+  kafkaProps.put("bootstrap.servers", Kafka.bootstrapServers)
   kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
   kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
   kafkaProps.put("acks", "all")
@@ -26,7 +26,7 @@ case class Producer(configuration: DriverConfiguration) {
   }
 
   def sendSync(value: String) {
-    val record = new ProducerRecord[String, String](configuration.Kafka.topics, value)
+    val record = new ProducerRecord[String, String](Kafka.topics, value)
     try {
       producer.send(record).get()
     } catch {
@@ -36,7 +36,7 @@ case class Producer(configuration: DriverConfiguration) {
   }
 
   def sendAsync(value: String) {
-    val record = new ProducerRecord[String, String](configuration.Kafka.topics, value)
+    val record = new ProducerRecord[String, String](Kafka.topics, value)
     val p = Promise[(RecordMetadata, Exception)]()
     producer.send(record, new Callback {
       override def onCompletion(metadata: RecordMetadata, exception: Exception) {

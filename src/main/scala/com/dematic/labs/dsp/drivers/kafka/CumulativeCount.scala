@@ -1,6 +1,6 @@
 package com.dematic.labs.dsp.drivers.kafka
 
-import com.dematic.labs.dsp.configuration.DriverConfiguration
+import com.dematic.labs.dsp.configuration.DriverConfiguration._
 import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.streaming.OutputMode.Complete
@@ -12,21 +12,18 @@ import org.apache.spark.sql.streaming.ProcessingTime
   */
 object CumulativeCount {
   def main(args: Array[String]) {
-    val config = new DriverConfiguration
-
     // create the spark session
     val builder: SparkSession.Builder = SparkSession.builder
-    val masterUrl = config.Spark.masterUrl
-    if (!Strings.isNullOrEmpty(masterUrl)) builder.master(masterUrl)
-    builder.appName(config.Driver.appName)
+    if (!Strings.isNullOrEmpty(Spark.masterUrl)) builder.master(Spark.masterUrl)
+    builder.appName(Driver.appName)
     val spark: SparkSession = builder.getOrCreate
 
     // create the input source, kafka
     val kafka = spark.readStream
-      .format(config.Kafka.format())
-      .option(config.Kafka.BootstrapServersKey, config.Kafka.bootstrapServers)
-      .option(config.Kafka.subscribe, config.Kafka.topics)
-      .option(config.Kafka.TopicSubscriptionKey, config.Kafka.startingOffsets)
+      .format(Kafka.format())
+      .option(Kafka.BootstrapServersKey, Kafka.bootstrapServers)
+      .option(Kafka.subscribe, Kafka.topics)
+      .option(Kafka.TopicSubscriptionKey, Kafka.startingOffsets)
       .load
 
     // kafka schema is the following: input columns: [value, timestamp, timestampType, partition, key, topic, offset]
@@ -37,8 +34,8 @@ object CumulativeCount {
     //2) write count to an output sink
     val query = totalCount.writeStream
       .format("console")
-      .trigger(ProcessingTime(config.Spark.queryTrigger))
-      .option(config.Spark.CheckpointLocationKey, config.Spark.checkpointLocation)
+      .trigger(ProcessingTime(Spark.queryTrigger))
+      .option(Spark.CheckpointLocationKey, Spark.checkpointLocation)
       .queryName("total_count")
       .outputMode(Complete)
       .start
