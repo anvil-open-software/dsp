@@ -11,6 +11,8 @@ class DriverConfigurationSuite extends FunSuite {
     // spark properties
     // from application.conf
     assert("local[*]" === config.Spark.masterUrl)
+    // from application.conf
+    assert("/tmp/checkpoint" === config.Spark.checkpointLocation)
     // from reference.conf
     assert("0 seconds" === config.Spark.queryTrigger)
     // kafka properties
