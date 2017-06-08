@@ -194,6 +194,7 @@
         except spark and its transitive dependencies. The resulting fat-jar can be executed
         on a cluster. Change the value of Program-Class if your program entry point changes. -->
     <build>
+        <defaultGoal>clean install</defaultGoal>
         <plugins>
             <!-- We use the maven-shade plugin to create a fat jar that contains all dependencies
             except spark and it's transitive dependencies. The resulting fat-jar can be executed
