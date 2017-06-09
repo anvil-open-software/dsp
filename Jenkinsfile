@@ -53,17 +53,23 @@ timestamps {
     def releaseVersion
     stage('Continue to Release') {
         milestone label: 'preReleaseConfirmation'
-        timeout(time: 1, unit: 'DAYS') {
-            releaseVersion = input(
-                    message: 'Publish ?',
-                    parameters: [
-                            [name        : 'version',
-                             defaultValue: currentPomVersion.minus('-SNAPSHOT'),
-                             description : 'Release version',
-                             $class      : 'hudson.model.StringParameterDefinition']
-                    ]
-            )
+
+        try {
+            timeout(time: 1, unit: 'DAYS') {
+                releaseVersion = input(
+                        message: 'Publish ?',
+                        parameters: [
+                                [name        : 'version',
+                                 defaultValue: currentPomVersion.minus('-SNAPSHOT'),
+                                 description : 'Release version',
+                                 $class      : 'hudson.model.StringParameterDefinition']
+                        ]
+                )
+            }
+        } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+            currentBuild.result = 'SUCCESS'
         }
+
         milestone label: 'postReleaseConfirmation'
     }
 
@@ -104,11 +110,13 @@ timestamps {
 }
 
 def isFeatureBranch() {
-    return env.BRANCH_NAME != 'master'
+    // DO NOT CHECK IN. Just for testing
+    return false;
+   // return env.BRANCH_NAME != 'master'
 }
 
 def branchProhibitsSonar() {
-    return isFeatureBranch()
+    return true
 }
 
 static nextSnapshotVersionFor(version) {
