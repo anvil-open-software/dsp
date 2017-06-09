@@ -68,6 +68,7 @@ timestamps {
             }
         } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
             currentBuild.result = 'SUCCESS'
+            return
         }
 
         milestone label: 'postReleaseConfirmation'
