@@ -50,6 +50,7 @@ timestamps {
         return
     }
 
+    def userAbortedRelease=false
     def releaseVersion
     stage('Continue to Release') {
         milestone label: 'preReleaseConfirmation'
@@ -68,12 +69,14 @@ timestamps {
             }
         } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
             currentBuild.result = 'SUCCESS'
-            return
+            userAbortedRelease = true
         }
 
         milestone label: 'postReleaseConfirmation'
     }
-
+    if (userAbortedRelease) {
+        return;
+    }
     node {
         gitlabCommitStatus('release') {
             ansiColor('xterm') {
