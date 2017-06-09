@@ -74,9 +74,11 @@ timestamps {
 
         milestone label: 'postReleaseConfirmation'
     }
+
     if (userAbortedRelease) {
-        return;
+        return
     }
+
     node {
         gitlabCommitStatus('release') {
             ansiColor('xterm') {
@@ -114,11 +116,10 @@ timestamps {
 }
 
 def isFeatureBranch() {
-    // DO NOT CHECK IN. Just for testing
-    return false;
-   // return env.BRANCH_NAME != 'master'
+   return env.BRANCH_NAME != 'master'
 }
 
+// Turned off until Michael puts in Sonar/jacoco for the project so jenkins does not waste CPU time
 def branchProhibitsSonar() {
     return true
 }
