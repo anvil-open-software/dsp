@@ -6,7 +6,6 @@ import org.junit.Test;
 import static com.dematic.labs.dsp.configuration.DriverConfiguration.*;
 
 public class DriverConfigurationTest {
-    
     @Test
     public void overrideConfiguration() {
         // driver properties
