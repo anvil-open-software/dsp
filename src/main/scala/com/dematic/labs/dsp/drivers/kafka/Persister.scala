@@ -16,27 +16,25 @@ object Persister {
     builder.appName(Driver.appName)
     val spark: SparkSession = builder.getOrCreate
 
-    // create the input source, kafka
-    val kafka = spark.readStream
+    // create the cassandra connector
+    val connector: CassandraConnector = CassandraConnector.apply(spark.sparkContext.getConf)
+
+    // create the kafka input source and write to cassandra
+    val persister = spark.readStream
       .format(Kafka.format())
       .option(Kafka.BootstrapServersKey, Kafka.bootstrapServers)
       .option(Kafka.subscribe, Kafka.topics)
       .option(Kafka.TopicSubscriptionKey, Kafka.startingOffsets)
       .load
-
-    // save the raw signals in Cassandra
-    val query = kafka.writeStream
+      // write to cassandra
+      .writeStream
       .option(Spark.CheckpointLocationKey, Spark.checkpointLocation)
       .queryName("persister")
       .foreach(new ForeachWriter[Row]() {
-        private val connector: CassandraConnector = CassandraConnector.apply(spark.sparkContext.getConf)
-
-        override def open(partitionId: Long, version: Long) {}
-
+        override def open(partitionId: Long, version: Long) = true
         override def process(value: Row) {}
-
         override def close(errorOrNull: Throwable) {}
       }).start
-    query.awaitTermination
+    persister.awaitTermination()
   }
 }
