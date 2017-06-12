@@ -42,6 +42,6 @@ object Persister {
         }).start
       persister.awaitTermination()
     } finally
-      sparkSession.stop()
+      sparkSession.close()
   }
 }
