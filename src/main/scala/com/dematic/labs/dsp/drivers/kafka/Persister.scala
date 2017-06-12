@@ -14,27 +14,34 @@ object Persister {
     val builder: SparkSession.Builder = SparkSession.builder
     if (!Strings.isNullOrEmpty(Spark.masterUrl)) builder.master(Spark.masterUrl)
     builder.appName(Driver.appName)
-    val spark: SparkSession = builder.getOrCreate
+    val sparkSession: SparkSession = builder.getOrCreate
 
     // create the cassandra connector
-    val connector: CassandraConnector = CassandraConnector.apply(spark.sparkContext.getConf)
+    val connector: CassandraConnector = CassandraConnector.apply(sparkSession.sparkContext.getConf)
 
     // create the kafka input source and write to cassandra
-    val persister = spark.readStream
-      .format(Kafka.format())
-      .option(Kafka.BootstrapServersKey, Kafka.bootstrapServers)
-      .option(Kafka.subscribe, Kafka.topics)
-      .option(Kafka.TopicSubscriptionKey, Kafka.startingOffsets)
-      .load
-      // write to cassandra
-      .writeStream
-      .option(Spark.CheckpointLocationKey, Spark.checkpointLocation)
-      .queryName("persister")
-      .foreach(new ForeachWriter[Row]() {
-        override def open(partitionId: Long, version: Long) = true
-        override def process(value: Row) {}
-        override def close(errorOrNull: Throwable) {}
-      }).start
-    persister.awaitTermination()
+    try {
+      val persister = sparkSession.readStream
+        .format(Kafka.format())
+        .option(Kafka.BootstrapServersKey, Kafka.bootstrapServers)
+        .option(Kafka.subscribe, Kafka.topics)
+        .option(Kafka.TopicSubscriptionKey, Kafka.startingOffsets)
+        .load
+        // write to cassandra
+        .writeStream
+        .option(Spark.CheckpointLocationKey, Spark.checkpointLocation)
+        .queryName("persister")
+        .foreach(new ForeachWriter[Row]() {
+          override def open(partitionId: Long, version: Long) = true
+
+          override def process(value: Row) {
+            connector.withSessionDo { session => session.execute("") }
+          }
+
+          override def close(errorOrNull: Throwable) {}
+        }).start
+      persister.awaitTermination()
+    } finally
+      sparkSession.stop()
   }
 }
