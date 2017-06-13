@@ -68,7 +68,7 @@ object Persister {
           override def close(errorOrNull: Throwable) {}
 
           def cql(id: Long, timestamp: Timestamp, value: Int, generatorId: String): String =
-            s""" insert into ${Cassandra.keyspace}.signals (id, timestamp, value, generatedId) values($id, $timestamp, $value, '$generatorId')"""
+            s""" insert into ${Cassandra.keyspace}.signals (id, timestamp, value, generatorId) values($id, '$timestamp', $value, '$generatorId')"""
 
         }).start
       persister.awaitTermination()
