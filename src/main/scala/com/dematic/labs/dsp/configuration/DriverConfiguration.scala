@@ -17,6 +17,8 @@ object DriverConfiguration {
     val OutputModeKey = "spark.output.mode"
     val WatermarkTimeKey = "spark.watermark.time"
     val QueryTriggerKey = "spark.query.trigger"
+    val CassandraUsernameKey = "spark.cassandra.username"
+    val CassandraPasswordKey = "spark.cassandra.password"
     val CassandraHostKey = "spark.cassandra.connection.host"
 
     lazy val masterUrl: String = config.getString(MasterKey)
@@ -26,6 +28,8 @@ object DriverConfiguration {
     lazy val watermarkTime: String = config.getString(WatermarkTimeKey)
     lazy val queryTrigger: String = config.getString(QueryTriggerKey)
     lazy val cassandraHost: String = config.getString(CassandraHostKey)
+    lazy val cassandraUsername: String = config.getString(CassandraUsernameKey)
+    lazy val cassandraPassword: String = config.getString(CassandraPasswordKey)
   }
 
   object Kafka {
@@ -43,12 +47,8 @@ object DriverConfiguration {
   }
 
   object Cassandra {
-    val UsernameKey = "cassandra.username"
-    val PasswordKey = "cassandra.password"
-    val KeyspaceKey = "cassandra.keyspace"
+    val KeyspaceKey = "keyspace"
 
-    lazy val username: String = config.getString(UsernameKey)
-    lazy val password: String = config.getString(PasswordKey)
     lazy val keyspace: String = config.getString(KeyspaceKey)
   }
 }

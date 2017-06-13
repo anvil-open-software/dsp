@@ -18,6 +18,8 @@ object Persister {
     if (!Strings.isNullOrEmpty(Spark.masterUrl)) builder.master(Spark.masterUrl)
     builder.appName(Driver.appName)
     builder.config(Spark.CassandraHostKey, Spark.cassandraHost)
+    builder.config(Spark.CassandraUsernameKey, Spark.cassandraUsername)
+    builder.config(Spark.CassandraPasswordKey, Spark.cassandraPassword)
     val sparkSession: SparkSession = builder.getOrCreate
 
     // create the cassandra connector
