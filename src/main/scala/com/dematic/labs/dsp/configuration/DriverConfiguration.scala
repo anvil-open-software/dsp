@@ -17,9 +17,9 @@ object DriverConfiguration {
     val OutputModeKey = "spark.output.mode"
     val WatermarkTimeKey = "spark.watermark.time"
     val QueryTriggerKey = "spark.query.trigger"
-    val CassandraUsernameKey = "spark.cassandra.username"
-    val CassandraPasswordKey = "spark.cassandra.password"
     val CassandraHostKey = "spark.cassandra.connection.host"
+    val CassandraUsernameKey = "spark.cassandra.auth.username"
+    val CassandraPasswordKey = "spark.cassandra.auth.password"
 
     lazy val masterUrl: String = config.getString(MasterKey)
     lazy val checkpointLocation: String = config.getString(CheckpointLocationKey)
