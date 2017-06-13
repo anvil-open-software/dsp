@@ -5,8 +5,8 @@ import java.util.concurrent.ThreadPoolExecutor.DiscardPolicy
 import java.util.concurrent.{Executors, LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
 
 import com.dematic.labs.dsp.configuration.DriverConfiguration._
+import com.dematic.labs.dsp.data.Signal
 import com.dematic.labs.dsp.data.Utils.toJson
-import com.dematic.labs.dsp.data.{CountdownTimer, Signal}
 import com.dematic.labs.dsp.producers.kafka.Producer
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -35,7 +35,8 @@ object Throughput extends App {
   private val nextRandomValue = {
     val random = new Random
     () => {
-      random.nextInt()
+      val num = random.nextInt()
+      if (num < 0) num * -1 else num
     }
   }
 
@@ -55,7 +56,7 @@ object Throughput extends App {
     while (!CountdownTimer.isFinished) {
       val result = Future {
         // create random json
-        val json = toJson(new Signal(nextId(), nextRandomValue(), Instant.now.toString, generatorId))
+        val json = toJson(new Signal(nextId(), Instant.now.toString, nextRandomValue(), generatorId))
         producer.send(json)
       }
       // only print exception if, something goes wrong
