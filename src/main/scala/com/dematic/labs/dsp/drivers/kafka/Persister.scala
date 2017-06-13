@@ -3,10 +3,13 @@ package com.dematic.labs.dsp.drivers.kafka
 import java.sql.Timestamp
 
 import com.datastax.spark.connector.cql.CassandraConnector
-import com.dematic.labs.dsp.configuration.DriverConfiguration.{Driver, Kafka, Spark, Cassandra}
-import com.dematic.labs.dsp.data.{Signal, Utils}
+import com.dematic.labs.dsp.configuration.DriverConfiguration.{Cassandra, Driver, Kafka, Spark}
+import com.dematic.labs.dsp.data.Utils
 import com.google.common.base.Strings
-import org.apache.spark.sql.{Encoders, ForeachWriter, SparkSession}
+import org.apache.spark.sql._
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types.{StringType, StructField, StructType, _}
+
 
 /**
   * Persist raw signals to Cassandra.
@@ -34,33 +37,38 @@ object Persister {
         .option(Kafka.TopicSubscriptionKey, Kafka.startingOffsets)
         .load
 
-      // retrieve the signal values
-      val json = kafka.selectExpr("CAST(value AS STRING)").as(Encoders.STRING)
+      // define the signal schema retrieve the signal values
+      val schema: StructType = StructType(Seq(
+        StructField("id", LongType, nullable = false),
+        StructField("timestamp", StringType, nullable = false),
+        StructField("value", IntegerType, nullable = false),
+        StructField("generatorId", StringType, nullable = true)
+      ))
 
-      // explicitly define signal encoders
-      implicit val encoder = Encoders.bean[Signal](classOf[Signal])
+      import sparkSession.implicits._
 
-      // convert to signals
-      val signals = json.as[Signal]
+      // convert to json and select all values
+      val signals = kafka.selectExpr("cast (value as string) as json").
+        select(from_json($"json", schema).as("signals")).select("signals.*")
 
       // write to cassandra
       val persister = signals.writeStream
         .option(Spark.CheckpointLocationKey, Spark.checkpointLocation)
         .queryName("persister")
-        .foreach(new ForeachWriter[Signal]() {
+        .foreach(new ForeachWriter[Row]() {
           override def open(partitionId: Long, version: Long) = true
 
-          override def process(signal: Signal) {
-            // spark.cassandra.connection.host"
+          override def process(row: Row) {
             connector.withSessionDo { session =>
-              session.execute(cql(signal.id, Utils.toTimeStamp(signal.timestamp), signal.value, signal.generatorId))
+              session.execute(cql(row.getAs[Long]("id"), Utils.toTimeStamp(row.getAs[String]("timestamp")),
+                row.getAs[Int]("value"), row.getAs[String]("generatorId")))
             }
           }
 
           override def close(errorOrNull: Throwable) {}
 
-          def cql(id: Long, time: Timestamp, value: Int, generatorId: String): String =
-            s""" insert into '${Cassandra.keyspace}'.signals (id, time, value, generatedId) values('$id', '$time', '$value', '$generatorId')"""
+          def cql(id: Long, timestamp: Timestamp, value: Int, generatorId: String): String =
+            s""" insert into ${Cassandra.keyspace}.signals (id, timestamp, value, generatedId) values($id, $timestamp, $value, '$generatorId')"""
 
         }).start
       persister.awaitTermination()

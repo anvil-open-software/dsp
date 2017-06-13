@@ -1,7 +1,5 @@
 package com.dematic.labs.dsp.data
 
-import java.sql.Timestamp
-
 import scala.beans.BeanProperty
 import scala.util.hashing.MurmurHash3
 

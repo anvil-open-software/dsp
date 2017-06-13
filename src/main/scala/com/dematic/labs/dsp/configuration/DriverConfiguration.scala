@@ -47,7 +47,7 @@ object DriverConfiguration {
   }
 
   object Cassandra {
-    val KeyspaceKey = "keyspace"
+    val KeyspaceKey = "cassandra.keyspace"
 
     lazy val keyspace: String = config.getString(KeyspaceKey)
   }

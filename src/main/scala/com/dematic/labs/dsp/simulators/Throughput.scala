@@ -35,7 +35,8 @@ object Throughput extends App {
   private val nextRandomValue = {
     val random = new Random
     () => {
-      random.nextInt()
+      val num = random.nextInt()
+      if (num < 0) num * -1 else num
     }
   }
 
