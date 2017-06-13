@@ -1,6 +1,8 @@
 package com.dematic.labs.dsp.data
 
 import java.nio.charset.Charset
+import java.sql.Timestamp
+import java.text.{DateFormat, SimpleDateFormat}
 
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
@@ -27,5 +29,21 @@ object Utils {
 
   def toBytes(json: String): Array[Byte] = {
     json.getBytes(Charset.defaultCharset())
+  }
+
+  // todo: unify timestamps between cassandra and spark/sparks ql
+  def toTimeStamp(timeStr: String): Timestamp = {
+    val dateFormat1: DateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    val dateFormat2: DateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss")
+
+    val date: Option[Timestamp] = {
+      try {
+        Some(new Timestamp(dateFormat1.parse(timeStr).getTime))
+      } catch {
+        case e: java.text.ParseException =>
+          Some(new Timestamp(dateFormat2.parse(timeStr).getTime))
+      }
+    }
+    date.getOrElse(Timestamp.valueOf(timeStr))
   }
 }

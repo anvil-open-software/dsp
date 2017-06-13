@@ -17,6 +17,7 @@ object DriverConfiguration {
     val OutputModeKey = "spark.output.mode"
     val WatermarkTimeKey = "spark.watermark.time"
     val QueryTriggerKey = "spark.query.trigger"
+    val CassandraHostKey = "spark.cassandra.connection.host"
 
     lazy val masterUrl: String = config.getString(MasterKey)
     lazy val checkpointLocation: String = config.getString(CheckpointLocationKey)
@@ -24,6 +25,7 @@ object DriverConfiguration {
     lazy val outputMode: String = config.getString(OutputModeKey)
     lazy val watermarkTime: String = config.getString(WatermarkTimeKey)
     lazy val queryTrigger: String = config.getString(QueryTriggerKey)
+    lazy val cassandraHost: String = config.getString(CassandraHostKey)
   }
 
   object Kafka {
