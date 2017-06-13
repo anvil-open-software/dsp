@@ -3,7 +3,7 @@ package com.dematic.labs.dsp.drivers.kafka
 import java.sql.Timestamp
 
 import com.datastax.spark.connector.cql.CassandraConnector
-import com.dematic.labs.dsp.configuration.DriverConfiguration.{Driver, Kafka, Spark}
+import com.dematic.labs.dsp.configuration.DriverConfiguration.{Driver, Kafka, Spark, Cassandra}
 import com.dematic.labs.dsp.data.{Signal, Utils}
 import com.google.common.base.Strings
 import org.apache.spark.sql.{Encoders, ForeachWriter, SparkSession}
@@ -58,7 +58,7 @@ object Persister {
           override def close(errorOrNull: Throwable) {}
 
           def cql(id: Long, time: Timestamp, value: Int, generatorId: String): String =
-            s""" insert into my_keyspace.test_table (id, time, value, generatedId) values('$id', '$time', '$value', '$generatorId')"""
+            s""" insert into '${Cassandra.keyspace}'.signals (id, time, value, generatedId) values('$id', '$time', '$value', '$generatorId')"""
 
         }).start
       persister.awaitTermination()

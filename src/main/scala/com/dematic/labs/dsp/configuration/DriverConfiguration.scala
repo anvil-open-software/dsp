@@ -45,8 +45,10 @@ object DriverConfiguration {
   object Cassandra {
     val UsernameKey = "cassandra.username"
     val PasswordKey = "cassandra.password"
+    val KeyspaceKey = "cassandra.keyspace"
 
     lazy val username: String = config.getString(UsernameKey)
     lazy val password: String = config.getString(PasswordKey)
+    lazy val keyspace: String = config.getString(KeyspaceKey)
   }
 }
