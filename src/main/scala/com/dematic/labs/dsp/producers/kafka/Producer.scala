@@ -15,20 +15,22 @@ class Producer {
   kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
   kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
   kafkaProps.put("acks", "all")
+  // todo: add all properties to application.conf of simulators
   kafkaProps.put("producerType", "sync")
   kafkaProps.put("retries", "3")
 
   // connection to Kafka!
-  private val producer = new KafkaProducer[String, String](kafkaProps)
+  private val kafkaProducer = new KafkaProducer[String, String](kafkaProps)
 
   def send(value: String) {
-    if ("producerType" == "sync") sendSync(value) else sendAsync(value)
+   // if ("producerType" == "sync") sendSync(value) else sendAsync(value)
+    sendAsync(value)
   }
 
   def sendSync(value: String) {
     val record = new ProducerRecord[String, String](Kafka.topics, value)
     try {
-      producer.send(record).get()
+      kafkaProducer.send(record).get()
     } catch {
       case e: Exception =>
         println(s"Unexpected Error\n: ${e.printStackTrace()}")
@@ -38,7 +40,7 @@ class Producer {
   def sendAsync(value: String) {
     val record = new ProducerRecord[String, String](Kafka.topics, value)
     val p = Promise[(RecordMetadata, Exception)]()
-    producer.send(record, new Callback {
+    kafkaProducer.send(record, new Callback {
       override def onCompletion(metadata: RecordMetadata, exception: Exception) {
         p.success((metadata, exception))
       }
@@ -47,7 +49,7 @@ class Producer {
 
   // will wait for 30 seconds, to ensure all msgs are sent, if there are still pending msgs, they will be dropped
   def close() {
-    producer.flush()
-    producer.close(30, TimeUnit.SECONDS)
+    kafkaProducer.flush()
+    kafkaProducer.close(30, TimeUnit.SECONDS)
   }
 }
