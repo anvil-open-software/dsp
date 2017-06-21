@@ -1,10 +1,10 @@
 package com.dematic.labs.dsp.drivers.kafka
 
 import java.sql.Timestamp
+import java.text.{DateFormat, SimpleDateFormat}
 
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.dematic.labs.dsp.configuration.DriverConfiguration.{Cassandra, Driver, Kafka, Spark}
-import com.dematic.labs.dsp.data.Utils
 import com.google.common.base.Strings
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
@@ -37,6 +37,21 @@ object Persister {
         .option(Kafka.TopicSubscriptionKey, Kafka.startingOffsets)
         .load
 
+      /**
+        * /* val schema = StructType(Seq(
+        * StructField("aggregate_time", StructType(Seq(
+        * StructField("start", TimestampType, false),
+        * StructField("end", TimestampType, false)
+        * ))),
+        * StructField("opcTagId", LongType, false),
+        * StructField("count", LongType, false),
+        * StructField("avg", LongType, true),
+        * StructField("min", LongType, true),
+        * StructField("max", LongType, true),
+        * StructField("sum", LongType, true)
+        * ))*/
+        */
+
       // define the signal schema retrieve the signal values
       val schema: StructType = StructType(Seq(
         StructField("id", LongType, nullable = false),
@@ -60,19 +75,35 @@ object Persister {
 
           override def process(row: Row) {
             connector.withSessionDo { session =>
-              session.execute(cql(row.getAs[Long]("id"), Utils.toTimeStamp(row.getAs[String]("timestamp")),
-                row.getAs[Int]("value"), row.getAs[String]("generatorId")))
+              session.execute(cql(row.getAs[Long]("id"), toTimeStamp(row.getAs[String]("timestamp")),
+                row.getAs[Int]("value"), row.getAs[String]("producerId")))
             }
           }
 
           override def close(errorOrNull: Throwable) {}
 
-          def cql(id: Long, timestamp: Timestamp, value: Int, generatorId: String): String =
-            s""" insert into ${Cassandra.keyspace}.signals (id, timestamp, value, generatorId) values($id, '$timestamp', $value, '$generatorId')"""
+          def cql(id: Long, timestamp: Timestamp, value: Int, producerId: String): String =
+            s""" insert into ${Cassandra.keyspace}.signals (id, timestamp, value, producerId) values($id, '$timestamp', $value, '$producerId')"""
 
         }).start
       persister.awaitTermination()
     } finally
       sparkSession.close()
+  }
+
+  // todo: unify timestamps between cassandra and spark/sparks ql
+  def toTimeStamp(timeStr: String): Timestamp = {
+    val dateFormat1: DateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    val dateFormat2: DateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss")
+
+    val date: Option[Timestamp] = {
+      try {
+        Some(new Timestamp(dateFormat1.parse(timeStr).getTime))
+      } catch {
+        case e: java.text.ParseException =>
+          Some(new Timestamp(dateFormat2.parse(timeStr).getTime))
+      }
+    }
+    date.getOrElse(Timestamp.valueOf(timeStr))
   }
 }
