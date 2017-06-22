@@ -4,7 +4,6 @@ import org.scalatest.FunSuite
 
 class DriverConfigurationSuite extends FunSuite {
   test("override reference.conf properties via application.conf") {
- //   val config = new DriverConfiguration
     // driver properties
     // from application.conf
     assert("CumulativeCount" === DriverConfiguration.Driver.appName)
