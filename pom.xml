@@ -182,7 +182,6 @@
                                     </excludes>
                                 </filter>
                             </filters>
-                            <createDependencyReducedPom>true</createDependencyReducedPom>
                         </configuration>
                     </execution>
                 </executions>
