@@ -155,10 +155,10 @@
                 <executions>
                     <!-- Run shade goal on package phase -->
                     <execution>
-                        <phase>package</phase>
                         <goals>
                             <goal>shade</goal>
                         </goals>
+                        <phase>package</phase>
                         <configuration>
                             <artifactSet>
                                 <excludes>
