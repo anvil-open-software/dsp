@@ -116,7 +116,7 @@ timestamps {
 }
 
 def isFeatureBranch() {
-   return env.BRANCH_NAME != 'master' &&  !env.BRANCH_NAME.endsWith('-test-release')
+   return env.BRANCH_NAME != 'master'
 }
 
 // Turned off until Michael puts in Sonar/jacoco for the project so jenkins does not waste CPU time
