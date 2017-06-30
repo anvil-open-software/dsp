@@ -229,7 +229,6 @@
                                     <type>cql</type>
                                     <classifier>persister</classifier>
                                 </artifact>
-                                ...
                             </artifacts>
                         </configuration>
                     </execution>
