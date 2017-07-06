@@ -5,11 +5,13 @@ import java.io.InputStream
 import info.batey.kafka.unit.KafkaUnit
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.scalatest.{BeforeAndAfter, FunSuite}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.io.Source
 import scala.language.reflectiveCalls
 
 class PersisterSuite extends FunSuite with BeforeAndAfter {
+  val logger: Logger = LoggerFactory.getLogger("PersisterSuite")
 
   val kafkaServer = new KafkaUnit
   val topicAndKeyspace = "persister"
@@ -20,6 +22,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
     kafkaServer.createTopic(topicAndKeyspace)
     // 2) start cassandra and create keyspace/table
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(EmbeddedCassandraServerHelper.CASSANDRA_RNDPORT_YML_FILE)
+    logger.info(s"kafka server = '${kafkaServer.getKafkaConnect}' cassandra = 'localhost:${EmbeddedCassandraServerHelper.getNativeTransportPort}'")
   }
 
   after {
