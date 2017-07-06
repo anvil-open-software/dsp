@@ -57,7 +57,7 @@ object Persister {
         StructField("id", LongType, nullable = false),
         StructField("timestamp", StringType, nullable = false),
         StructField("value", IntegerType, nullable = false),
-        StructField("generatorId", StringType, nullable = true)
+        StructField("producerId", StringType, nullable = true)
       ))
 
       import sparkSession.implicits._

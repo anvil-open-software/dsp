@@ -2,12 +2,12 @@ package com.dematic.labs.dsp.drivers.kafka
 
 import java.io.InputStream
 
-import com.datastax.driver.core.Cluster
 import info.batey.kafka.unit.KafkaUnit
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.scalatest.{BeforeAndAfter, FunSuite}
 
 import scala.io.Source
+import scala.language.reflectiveCalls
 
 class PersisterSuite extends FunSuite with BeforeAndAfter {
 
@@ -19,7 +19,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
     kafkaServer.startup()
     kafkaServer.createTopic(topicAndKeyspace)
     // 2) start cassandra and create keyspace/table
-    EmbeddedCassandraServerHelper.startEmbeddedCassandra()
+    EmbeddedCassandraServerHelper.startEmbeddedCassandra(EmbeddedCassandraServerHelper.CASSANDRA_RNDPORT_YML_FILE)
   }
 
   after {
@@ -29,10 +29,11 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
 
   test("complete DSP Persister test, push signals to kafka, spark consumes and persist to cassandra") {
     // create a cassandra cluster and connect and create keyspace and table
-    using(Cluster.builder().
-      addContactPoint(EmbeddedCassandraServerHelper.getHost).
-      withPort(EmbeddedCassandraServerHelper.getNativeTransportPort).build) {
+    println(kafkaServer.getBrokerPort)
+    // will close cluster
+    using(EmbeddedCassandraServerHelper.getCluster) {
       cluster => {
+        // will close session
         using(cluster.connect) {
           session => {
             session.execute(s"CREATE KEYSPACE if not exists $topicAndKeyspace WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };")
@@ -45,6 +46,21 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
             for (line <- Source.fromInputStream(stream).getLines) {
               if (!line.startsWith("#")) session.execute(line)
             }
+            // override properties from application.conf
+            // driver properties
+            System.setProperty("driver.appName", topicAndKeyspace)
+            // spark properties
+            System.setProperty("spark.cassandra.connection.host", "localhost")
+            System.setProperty("spark.cassandra.connection.port", EmbeddedCassandraServerHelper.getNativeTransportPort.toString)
+            System.setProperty("spark.cassandra.auth.username", "none")
+            System.setProperty("spark.cassandra.auth.password", "none")
+            // kafka properties
+            System.setProperty("kafka.bootstrap.servers", kafkaServer.getKafkaConnect)
+            System.setProperty("kafka.topics", topicAndKeyspace)
+            // cassandra properties
+            System.setProperty("cassandra.keyspace", topicAndKeyspace)
+            // start and deploy spark driver
+            Persister.main(Array[String]())
           }
         }
       }
