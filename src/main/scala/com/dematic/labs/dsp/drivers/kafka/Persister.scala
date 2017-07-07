@@ -35,6 +35,7 @@ object Persister {
         .option(Kafka.BootstrapServersKey, Kafka.bootstrapServers)
         .option(Kafka.subscribe, Kafka.topics)
         .option(Kafka.TopicSubscriptionKey, Kafka.startingOffsets)
+        .option(Kafka.MaxOffsetsPerTriggerKey, Kafka.maxOffsetsPerTrigger)
         .load
 
       /**

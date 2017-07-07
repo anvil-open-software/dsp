@@ -35,13 +35,15 @@ object DriverConfiguration {
   object Kafka {
     val BootstrapServersKey = "kafka.bootstrap.servers"
     val TopicsKey = "kafka.topics"
-    val TopicSubscriptionKey = "kafka.subscribe"
-    val StartingOffsetsKey = "kafka.startingOffsets"
+    val TopicSubscriptionKey = "subscribe"
+    val StartingOffsetsKey = "startingOffsets"
+    val MaxOffsetsPerTriggerKey = "maxOffsetsPerTrigger"
 
     lazy val bootstrapServers: String = config.getString(BootstrapServersKey)
     lazy val topics: String = config.getString(TopicsKey)
     lazy val subscribe: String = config.getString(TopicSubscriptionKey)
     lazy val startingOffsets: String = config.getString(StartingOffsetsKey)
+    lazy val maxOffsetsPerTrigger: String = config.getString(MaxOffsetsPerTriggerKey)
 
     def format() = "kafka"
   }
