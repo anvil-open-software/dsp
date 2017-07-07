@@ -26,4 +26,15 @@ public class DriverConfigurationTest {
         // from application.conf
         Assert.assertEquals("test", Kafka$.MODULE$.topics());
     }
+
+    @Test
+    public void removeKeyQualifier() {
+        Assert.assertEquals("appName", DriverConfiguration.removeQualifier(Driver$.MODULE$.AppNameKey()));
+        Assert.assertEquals("maxOffsetsPerTrigger",
+                DriverConfiguration.removeQualifier(Kafka$.MODULE$.MaxOffsetsPerTriggerKey()));
+        Assert.assertEquals("output.mode",
+                DriverConfiguration.removeQualifier(Spark$.MODULE$.OutputModeKey()));
+        Assert.assertEquals("keyspace",
+                DriverConfiguration.removeQualifier(Cassandra$.MODULE$.KeyspaceKey()));
+    }
 }
