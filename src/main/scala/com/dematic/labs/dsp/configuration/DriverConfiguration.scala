@@ -37,11 +37,13 @@ object DriverConfiguration {
     val TopicsKey = "kafka.topics"
     val TopicSubscriptionKey = "kafka.subscribe"
     val StartingOffsetsKey = "kafka.startingOffsets"
+    val MaxOffsetsPerTriggerKey = "kafka.maxOffsetsPerTrigger"
 
     lazy val bootstrapServers: String = config.getString(BootstrapServersKey)
     lazy val topics: String = config.getString(TopicsKey)
     lazy val subscribe: String = config.getString(TopicSubscriptionKey)
     lazy val startingOffsets: String = config.getString(StartingOffsetsKey)
+    lazy val maxOffsetsPerTrigger: String = config.getString(MaxOffsetsPerTriggerKey)
 
     def format() = "kafka"
   }
@@ -50,5 +52,19 @@ object DriverConfiguration {
     val KeyspaceKey = "cassandra.keyspace"
 
     lazy val keyspace: String = config.getString(KeyspaceKey)
+  }
+
+  def removeQualifier(key: String): String = {
+    if (key.startsWith("driver")) {
+      key stripPrefix "driver."
+    } else if (key.startsWith("spark")) {
+      key stripPrefix "spark."
+    } else if (key.startsWith("kafka")) {
+      key stripPrefix "kafka."
+    } else if (key.startsWith("cassandra")) {
+      key stripPrefix "cassandra."
+    } else {
+      key
+    }
   }
 }
