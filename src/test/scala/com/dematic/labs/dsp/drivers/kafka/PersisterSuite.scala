@@ -1,14 +1,20 @@
 package com.dematic.labs.dsp.drivers.kafka
 
 import java.io.InputStream
+import java.lang.Thread.sleep
+import java.util.concurrent.TimeUnit
 
 import info.batey.kafka.unit.KafkaUnit
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper._
 import org.scalatest.{BeforeAndAfter, FunSuite}
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 import scala.io.Source
 import scala.language.reflectiveCalls
+import scala.util.Success
 
 class PersisterSuite extends FunSuite with BeforeAndAfter {
   val logger: Logger = LoggerFactory.getLogger("PersisterSuite")
@@ -62,13 +68,28 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
             for (line <- Source.fromInputStream(stream).getLines) {
               if (!line.startsWith("#")) session.execute(line)
             }
-
-            // start and deploy spark driver
-//            Persister.main(Array[String]())
-
-            // query cassandra to ensure signals exist
-            val results = session.execute("select count(*) from signals;")
-            println()
+            // start the driver asynchronously
+            Future {
+              // start the driver
+              Persister.main(Array[String]())
+            }
+            // query cassandra until all the signals have been saved
+            val count: Future[Long] = Future {
+              var numberOfSignals = 0L
+              do {
+                val row = session.execute("select count(*) from signals;").one()
+                if (row != null) numberOfSignals = row.getLong("count")
+                sleep(1000)
+                // keep getting count until at least 10 signals have been persisted
+              } while (numberOfSignals < 10)
+              numberOfSignals
+            }
+            // succeeded
+            count.onComplete({
+              case Success(signals) => logger.info(s"all signals '$signals' found")
+            })
+            // wait until we get a success, waiting 1 minute
+            Await.ready(count, Duration.create(5, TimeUnit.MINUTES))
           }
         }
       }
