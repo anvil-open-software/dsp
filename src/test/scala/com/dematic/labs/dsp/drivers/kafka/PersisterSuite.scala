@@ -64,7 +64,11 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
             }
 
             // start and deploy spark driver
-            Persister.main(Array[String]())
+//            Persister.main(Array[String]())
+
+            // query cassandra to ensure signals exist
+            val results = session.execute("select count(*) from signals;")
+            println()
           }
         }
       }
