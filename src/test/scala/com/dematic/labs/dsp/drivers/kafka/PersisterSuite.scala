@@ -81,5 +81,6 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
       f(resource)
     } finally {
       resource.close()
+      logger.info(s"closed $resource")
     }
 }
