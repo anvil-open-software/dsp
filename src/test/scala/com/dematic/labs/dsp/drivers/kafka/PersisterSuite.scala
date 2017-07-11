@@ -4,6 +4,7 @@ import java.io.InputStream
 import java.lang.Thread.sleep
 import java.util.concurrent.TimeUnit
 
+import com.dematic.labs.toolkit_bigdata.simulators.diagnostics.Signals
 import info.batey.kafka.unit.KafkaUnit
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper._
 import org.scalatest.{BeforeAndAfter, FunSuite}
@@ -21,6 +22,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
 
   val kafkaServer = new KafkaUnit
   val topicAndKeyspace = "persister"
+  val expectedNumberOfSignals = 100
 
   before {
     // 1) start kafka server and create topic
@@ -38,11 +40,13 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
     System.setProperty("spark.cassandra.connection.port", getNativeTransportPort.toString)
     System.setProperty("spark.cassandra.auth.username", "none")
     System.setProperty("spark.cassandra.auth.password", "none")
-    // kafka properties
+    // kafka properties, will be used for producer and driver
     System.setProperty("kafka.bootstrap.servers", kafkaServer.getKafkaConnect)
     System.setProperty("kafka.topics", topicAndKeyspace)
     // cassandra properties
     System.setProperty("cassandra.keyspace", topicAndKeyspace)
+    // producer Id
+    System.setProperty("producer.Id", "PersisterSuite")
   }
 
   after {
@@ -68,20 +72,25 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
             for (line <- Source.fromInputStream(stream).getLines) {
               if (!line.startsWith("#")) session.execute(line)
             }
-            // start the driver asynchronously
+
+            // 1) start the driver asynchronously
             Future {
               // start the driver
               Persister.main(Array[String]())
             }
-            // query cassandra until all the signals have been saved
+
+            // 2) push signal to kafka
+            Signals.main(Array(expectedNumberOfSignals.toString))
+
+            // 3) query cassandra until all the signals have been saved
             val count: Future[Long] = Future {
               var numberOfSignals = 0L
               do {
                 val row = session.execute("select count(*) from signals;").one()
                 if (row != null) numberOfSignals = row.getLong("count")
                 sleep(1000)
-                // keep getting count until at least 10 signals have been persisted
-              } while (numberOfSignals < 10)
+                // keep getting count until numberOfSignals have been persisted
+              } while (numberOfSignals != expectedNumberOfSignals)
               numberOfSignals
             }
             // succeeded
@@ -89,7 +98,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
               case Success(signals) => logger.info(s"all signals '$signals' found")
             })
             // wait until we get a success, waiting 1 minute
-            Await.ready(count, Duration.create(5, TimeUnit.MINUTES))
+            Await.ready(count, Duration.create(2, TimeUnit.MINUTES))
           }
         }
       }

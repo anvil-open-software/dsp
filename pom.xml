@@ -43,8 +43,9 @@
     <dependencies>
         <!-- dlabs dependencies -->
         <dependency>
-            <groupId>com.dematic.labs.analytics.monitor</groupId>
-            <artifactId>analytics-monitor</artifactId>
+            <groupId>com.dematic.labs.toolkit_bigdata</groupId>
+            <artifactId>simulators</artifactId>
+            <version>1.0.9-SNAPSHOT</version>
         </dependency>
         <!-- spark sql/data frames/data sets -->
         <dependency>
