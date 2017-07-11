@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.text.{DateFormat, SimpleDateFormat}
 
 import com.datastax.spark.connector.cql.CassandraConnector
-import com.dematic.labs.dsp.configuration.DriverConfiguration.{Cassandra, Driver, Kafka, Spark}
+import com.dematic.labs.dsp.configuration.DriverConfiguration._
 import com.google.common.base.Strings
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
@@ -34,7 +34,8 @@ object Persister {
         .format(Kafka.format())
         .option(Kafka.BootstrapServersKey, Kafka.bootstrapServers)
         .option(Kafka.subscribe, Kafka.topics)
-        .option(Kafka.TopicSubscriptionKey, Kafka.startingOffsets)
+        .option(removeQualifier(Kafka.StartingOffsetsKey), Kafka.startingOffsets)
+        .option(removeQualifier(Kafka.MaxOffsetsPerTriggerKey), Kafka.maxOffsetsPerTrigger)
         .load
 
       /**
@@ -57,7 +58,7 @@ object Persister {
         StructField("id", LongType, nullable = false),
         StructField("timestamp", StringType, nullable = false),
         StructField("value", IntegerType, nullable = false),
-        StructField("generatorId", StringType, nullable = true)
+        StructField("producerId", StringType, nullable = true)
       ))
 
       import sparkSession.implicits._
