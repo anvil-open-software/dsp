@@ -209,6 +209,7 @@
                     <target>1.8</target>
                 </configuration>
             </plugin>
+            <!-- compile scala -->
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
@@ -218,6 +219,23 @@
                         <goals>
                             <goal>compile</goal>
                             <goal>testCompile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- test scala -->
+            <plugin>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest-maven-plugin</artifactId>
+                <version>1.0</version>
+                <configuration>
+                    <parallel>false</parallel>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>test</id>
+                        <goals>
+                            <goal>test</goal>
                         </goals>
                     </execution>
                 </executions>

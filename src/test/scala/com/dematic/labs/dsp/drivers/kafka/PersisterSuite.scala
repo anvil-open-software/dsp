@@ -51,7 +51,20 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
 
   after {
     // shutdown kafka
-    kafkaServer.shutdown()
+    try {
+      kafkaServer.shutdown()
+    } finally {
+      // clear all properties
+      System.clearProperty("driver.appName")
+      System.clearProperty("spark.cassandra.connection.host")
+      System.clearProperty("spark.cassandra.connection.port")
+      System.clearProperty("spark.cassandra.auth.username")
+      System.clearProperty("spark.cassandra.auth.password")
+      System.clearProperty("kafka.bootstrap.servers")
+      System.clearProperty("kafka.topics")
+      System.clearProperty("cassandra.keyspace")
+      System.clearProperty("producer.Id")
+    }
   }
 
   test("complete DSP Persister test, push signals to kafka, spark consumes and persist to cassandra") {
