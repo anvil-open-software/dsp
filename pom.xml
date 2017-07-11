@@ -43,8 +43,9 @@
     <dependencies>
         <!-- dlabs dependencies -->
         <dependency>
-            <groupId>com.dematic.labs.analytics.monitor</groupId>
-            <artifactId>analytics-monitor</artifactId>
+            <groupId>com.dematic.labs.toolkit_bigdata</groupId>
+            <artifactId>simulators</artifactId>
+            <version>1.0.9-SNAPSHOT</version>
         </dependency>
         <!-- spark sql/data frames/data sets -->
         <dependency>
@@ -209,20 +210,6 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>net.alchim31.maven</groupId>
-                <artifactId>scala-maven-plugin</artifactId>
-                <version>3.2.2</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>testCompile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
                 <version>3.0.0</version>
@@ -245,8 +232,37 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- compile scala -->
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>3.2.2</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>testCompile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- test scala -->
+            <plugin>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest-maven-plugin</artifactId>
+                <version>1.0</version>
+                <configuration>
+                    <parallel>false</parallel>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>test</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
-
-
     </build>
 </project>
