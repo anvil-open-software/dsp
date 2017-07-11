@@ -15,7 +15,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.io.Source
 import scala.language.reflectiveCalls
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 class PersisterSuite extends FunSuite with BeforeAndAfter {
   val logger: Logger = LoggerFactory.getLogger("PersisterSuite")
@@ -95,7 +95,8 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
             }
             // succeeded
             count.onComplete({
-              case Success(signals) => logger.info(s"all signals '$signals' found")
+              case Success(numberOfSignals) => logger.info(s"all signals '$numberOfSignals' found")
+              case Failure(exception) => logger.error("unexpected error querying cassandra", exception)
             })
             // wait until we get a success, waiting 1 minute
             Await.ready(count, Duration.create(2, TimeUnit.MINUTES))
