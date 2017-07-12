@@ -17,7 +17,7 @@ timestamps {
                             }
 
                             stage('build') {
-                                maven('', '-Snapshot')
+                                maven('-U', '-Snapshot')
                             }
                         }
                     }
