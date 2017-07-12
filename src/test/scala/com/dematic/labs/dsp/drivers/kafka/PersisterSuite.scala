@@ -83,7 +83,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
             // create table from cql
             val stream: InputStream = getClass.getResourceAsStream("/persister.cql")
             for (line <- Source.fromInputStream(stream).getLines) {
-              if (!line.startsWith("#")) session.execute(line)
+              if (!line.startsWith("//")) session.execute(line)
             }
 
             // 1) start the driver asynchronously
