@@ -4,7 +4,7 @@
 
     <groupId>com.dematic.labs</groupId>
     <artifactId>dsp</artifactId>
-    <version>0.1.1-SNAPSHOT</version>
+    <version>0.1.2-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Data Streaming Pipeline Sandbox</name>
