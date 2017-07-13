@@ -25,9 +25,10 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
   val expectedNumberOfSignals = 100
 
   before {
-    // 1) start kafka server and create topic
+    // 1) start kafka server and create topic, only one broker created during testing
+    kafkaServer.setKafkaBrokerConfig("offsets.topic.replication.factor", "1")
     kafkaServer.startup()
-    kafkaServer.createTopic(topicAndKeyspace)
+    kafkaServer.createTopic(topicAndKeyspace, 1)
     // 2) start cassandra and create keyspace/table
     startEmbeddedCassandra(CASSANDRA_RNDPORT_YML_FILE)
     logger.info(s"kafka server = '${kafkaServer.getKafkaConnect}' cassandra = 'localhost:$getNativeTransportPort'")
