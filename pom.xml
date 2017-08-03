@@ -38,7 +38,8 @@
                 <scope>import</scope>
             </dependency>
         </dependencies>
-    </dependencyManagement>
+
+      </dependencyManagement>
 
     <dependencies>
         <!-- dlabs dependencies -->
@@ -147,6 +148,24 @@
         <dependency>
             <groupId>org.cassandraunit</groupId>
             <artifactId>cassandra-unit</artifactId>
+        </dependency>
+
+        <!-- prometheus monitoring -->
+        <dependency>
+            <groupId>com.dematic.labs.dsp.monitor</groupId>
+            <artifactId>dsp-monitor</artifactId>
+            <version>0.0.2-SNAPSHOT</version>
+
+            <exclusions>
+                <exclusion>
+                    <groupId>io.prometheus</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.dropwizard.metrics</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 

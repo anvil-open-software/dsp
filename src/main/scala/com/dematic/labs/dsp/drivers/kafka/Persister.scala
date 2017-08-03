@@ -4,6 +4,7 @@ import java.sql.Timestamp
 import java.text.{DateFormat, SimpleDateFormat}
 
 import com.datastax.spark.connector.cql.CassandraConnector
+import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.configuration.DriverConfiguration._
 import com.google.common.base.Strings
 import org.apache.spark.sql._
@@ -27,6 +28,11 @@ object Persister {
 
     // create the cassandra connector
     val connector: CassandraConnector = CassandraConnector.apply(sparkSession.sparkContext.getConf)
+
+    // hook up Prometheus listener for monitoring
+    if (sys.props.contains(MonitorConsts.SPARK_QUERY_MONITOR_PUSH_GATEWAY)) {
+      sparkSession.streams.addListener(new PrometheusStreamingQueryListener(sparkSession.sparkContext.getConf,Driver.appName))
+    }
 
     // create the kafka input source and write to cassandra
     try {
