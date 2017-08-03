@@ -1,5 +1,6 @@
 package com.dematic.labs.dsp.drivers.kafka
 
+import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.configuration.DriverConfiguration._
 import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
@@ -17,6 +18,11 @@ object CumulativeCount {
     if (!Strings.isNullOrEmpty(Spark.masterUrl)) builder.master(Spark.masterUrl)
     builder.appName(Driver.appName)
     val spark: SparkSession = builder.getOrCreate
+
+    // hook up Prometheus listener for monitoring
+    if (sys.props.contains(MonitorConsts.SPARK_QUERY_MONITOR_PUSH_GATEWAY)) {
+      spark.streams.addListener(new PrometheusStreamingQueryListener(spark.sparkContext.getConf,Driver.appName))
+    }
 
     // create the input source, kafka
     val kafka = spark.readStream
