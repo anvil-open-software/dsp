@@ -1,0 +1,2 @@
+// create signal aggregation table
+CREATE TABLE if not exists ss_signal_aggregation(opc_tag_id bigint, aggregate timestamp, count bigint, sum bigint, min bigint, max bigint, avg double, PRIMARY KEY ((opc_tag_id), aggregate)) WITH CLUSTERING ORDER BY (aggregate DESC);
