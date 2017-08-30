@@ -48,6 +48,12 @@
                 <artifactId>scala-library</artifactId>
                 <version>${scala.major.minor.version}</version>
         </dependency>
+        <!-- supports compatibility between java 8 and scala, most issues fixed in scala 2.12.x -->
+        <dependency>
+            <groupId>org.scala-lang.modules</groupId>
+            <artifactId>scala-java8-compat_2.11</artifactId>
+            <version>0.8.0</version>
+        </dependency>
         <!-- dlabs dependencies -->
         <dependency>
             <groupId>com.dematic.labs.toolkit_bigdata</groupId>

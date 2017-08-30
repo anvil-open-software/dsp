@@ -15,6 +15,7 @@ import scala.Symbol;
 
 import static com.dematic.labs.dsp.configuration.DriverConfiguration.*;
 import static org.apache.spark.sql.types.DataTypes.*;
+import static scala.compat.java8.JFunction.func;
 
 /**
  * -Dconfig.file=path/to/file/signalAggregation.conf
@@ -63,7 +64,7 @@ public final class SignalAggregation {
 
             // convert to json and select all values
             final Dataset<Row> signals = kafka.selectExpr("cast (value as string) as json").
-                    select(functions.from_json(new Column("json"), schema)).as("signals").select( "signals.*");
+                    select(functions.from_json(new Column("json"), schema)).as("signals").select("signals.*");
 
             // todo: looking watermark time
             final Dataset<Row> aggregate = signals.groupBy(
@@ -82,7 +83,7 @@ public final class SignalAggregation {
                     .foreach(new ForeachWriter<Row>() {
                         @Override
                         public void process(final Row value) {
-                            cassandraConnector.withSessionDo(session -> session.execute(cql(value)));
+                            cassandraConnector.withSessionDo(func(session -> session.execute(cql(value))));
                         }
 
                         @Override
