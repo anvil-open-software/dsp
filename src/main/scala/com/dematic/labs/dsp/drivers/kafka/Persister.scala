@@ -26,7 +26,11 @@ object Persister {
 
   def main(args: Array[String]) {
     // driver configuration
-    val config = new DefaultDriverConfiguration.Builder().build
+    val config = if(injectedDriverConfiguration == null) {
+      new DefaultDriverConfiguration.Builder().build
+    } else {
+      injectedDriverConfiguration
+    }
 
     // create the spark session
     val builder: SparkSession.Builder = SparkSession.builder
