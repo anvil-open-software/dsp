@@ -5,6 +5,7 @@ import com.datastax.driver.core.querybuilder.QueryBuilder;
 import com.datastax.spark.connector.cql.CassandraConnector;
 import com.dematic.labs.analytics.monitor.spark.MonitorConsts;
 import com.dematic.labs.analytics.monitor.spark.PrometheusStreamingQueryListener;
+import com.dematic.labs.dsp.configuration.DefaultDriverConfiguration;
 import com.google.common.base.Strings;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.streaming.StreamingQuery;
@@ -13,7 +14,6 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import scala.Symbol;
 
-import static com.dematic.labs.dsp.configuration.DriverConfiguration.*;
 import static org.apache.spark.sql.types.DataTypes.*;
 import static scala.compat.java8.JFunction.func;
 
@@ -22,16 +22,17 @@ import static scala.compat.java8.JFunction.func;
  */
 public final class SignalAggregation {
     public static void main(final String[] args) throws StreamingQueryException {
+        final DefaultDriverConfiguration config = new DefaultDriverConfiguration.Builder().build();
         // create the spark session
         final SparkSession.Builder builder = SparkSession.builder();
-        final String masterUrl = Spark$.MODULE$.masterUrl();
+        final String masterUrl = config.getSparkMaster();
         if (!Strings.isNullOrEmpty(masterUrl)) {
             builder.master(masterUrl);
         }
-        builder.appName(Driver$.MODULE$.appName());
-        builder.config(Spark$.MODULE$.CassandraHostKey(), Spark$.MODULE$.cassandraHost());
-        builder.config(Spark$.MODULE$.CassandraUsernameKey(), Spark$.MODULE$.cassandraUsername());
-        builder.config(Spark$.MODULE$.CassandraPasswordKey(), Spark$.MODULE$.cassandraPassword());
+        builder.appName(config.getDriverAppName());
+        builder.config("spark.cassandra.connection.host", config.getSparkCassandraConnectionHost());
+        builder.config("spark.cassandra.auth.username", config.getSparkCassandraAuthUsername());
+        builder.config("spark.cassandra.auth.password", config.getSparkCassandraAuthPassword());
 
         final SparkSession sparkSession = builder.getOrCreate();
 
@@ -39,7 +40,7 @@ public final class SignalAggregation {
         if (System.getProperties().contains(MonitorConsts.SPARK_QUERY_MONITOR_PUSH_GATEWAY)) {
             sparkSession.streams().addListener(
                     new PrometheusStreamingQueryListener(sparkSession.sparkContext().getConf(),
-                            Driver$.MODULE$.appName()));
+                            config.getDriverAppName()));
         }
 
         // create the cassandra connector
@@ -47,11 +48,11 @@ public final class SignalAggregation {
 
         try {
             final Dataset<Row> kafka = sparkSession.readStream()
-                    .format(Kafka$.MODULE$.format())
-                    .option(Kafka$.MODULE$.BootstrapServersKey(), Kafka$.MODULE$.bootstrapServers())
-                    .option(Kafka$.MODULE$.subscribe(), Kafka$.MODULE$.topics())
-                    .option(removeQualifier(Kafka$.MODULE$.StartingOffsetsKey()), Kafka$.MODULE$.startingOffsets())
-                    .option(removeQualifier(Kafka$.MODULE$.MaxOffsetsPerTriggerKey()), Kafka$.MODULE$.maxOffsetsPerTrigger())
+                    .format("kafka")
+                    .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers())
+                    .option(config.getKafkaSubscribe(), config.getKafkaTopics())
+                    .option("startingOffsets", config.getKafkaStartingOffsets())
+                    .option("maxOffsetsPerTrigger", config.getKafkaMaxOffsetsPerTrigger())
                     .load();
 
             // kafka schema is the following: input columns: [value, timestamp, timestampType, partition, key, topic, offset],
@@ -78,7 +79,7 @@ public final class SignalAggregation {
 
             // write to cassandra
             final StreamingQuery query = aggregate.writeStream()
-                    .option(Spark$.MODULE$.CheckpointLocationKey(), Spark$.MODULE$.checkpointLocation())
+                    .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation())
                     .queryName("signalAggregation")
                     .foreach(new ForeachWriter<Row>() {
                         @Override
@@ -96,7 +97,7 @@ public final class SignalAggregation {
                         }
 
                         private Statement cql(final Row row) {
-                            return QueryBuilder.update(Cassandra$.MODULE$.keyspace(), "signal_aggregation")
+                            return QueryBuilder.update(config.getCassandraKeyspace(), "signal_aggregation")
                                     .with(QueryBuilder.set("count", row.getAs(2)))
                                     .and(QueryBuilder.set("avg", row.getAs(3)))
                                     .and(QueryBuilder.set("min", row.getAs(4)))

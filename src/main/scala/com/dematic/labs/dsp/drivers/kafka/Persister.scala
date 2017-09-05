@@ -5,10 +5,11 @@ import java.text.{DateFormat, SimpleDateFormat}
 
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
-import com.dematic.labs.dsp.configuration.DriverConfiguration._
+import com.dematic.labs.dsp.configuration.DefaultDriverConfiguration
 import com.google.common.base.Strings
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.types.{StringType, StructField, StructType, _}
 
 
@@ -17,13 +18,16 @@ import org.apache.spark.sql.types.{StringType, StructField, StructType, _}
   */
 object Persister {
   def main(args: Array[String]) {
+    // driver configuration
+    val config = new DefaultDriverConfiguration.Builder().build
+
     // create the spark session
     val builder: SparkSession.Builder = SparkSession.builder
-    if (!Strings.isNullOrEmpty(Spark.masterUrl)) builder.master(Spark.masterUrl)
-    builder.appName(Driver.appName)
-    builder.config(Spark.CassandraHostKey, Spark.cassandraHost)
-    builder.config(Spark.CassandraUsernameKey, Spark.cassandraUsername)
-    builder.config(Spark.CassandraPasswordKey, Spark.cassandraPassword)
+    if (!Strings.isNullOrEmpty(config.getSparkMaster)) builder.master(config.getSparkMaster)
+    builder.appName(config.getDriverAppName)
+    builder.config("spark.cassandra.connection.host", config.getSparkCassandraConnectionHost)
+    builder.config("spark.cassandra.auth.username", config.getSparkCassandraAuthUsername)
+    builder.config("spark.cassandra.auth.password", config.getSparkCassandraAuthPassword)
     val sparkSession: SparkSession = builder.getOrCreate
 
     // create the cassandra connector
@@ -31,17 +35,18 @@ object Persister {
 
     // hook up Prometheus listener for monitoring
     if (sys.props.contains(MonitorConsts.SPARK_QUERY_MONITOR_PUSH_GATEWAY)) {
-      sparkSession.streams.addListener(new PrometheusStreamingQueryListener(sparkSession.sparkContext.getConf,Driver.appName))
+      sparkSession.streams.addListener(new PrometheusStreamingQueryListener(sparkSession.sparkContext.getConf,
+        config.getDriverAppName))
     }
 
     // create the kafka input source and write to cassandra
     try {
       val kafka = sparkSession.readStream
-        .format(Kafka.format())
-        .option(Kafka.BootstrapServersKey, Kafka.bootstrapServers)
-        .option(Kafka.subscribe, Kafka.topics)
-        .option(removeQualifier(Kafka.StartingOffsetsKey), Kafka.startingOffsets)
-        .option(removeQualifier(Kafka.MaxOffsetsPerTriggerKey), Kafka.maxOffsetsPerTrigger)
+        .format("kafka")
+        .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
+        .option(config.getKafkaSubscribe, config.getKafkaTopics)
+        .option("startingOffsets", config.getKafkaStartingOffsets)
+        .option("maxOffsetsPerTrigger", config.getKafkaMaxOffsetsPerTrigger)
         .load
 
       /**
@@ -75,7 +80,8 @@ object Persister {
 
       // write to cassandra
       val persister = signals.writeStream
-        .option(Spark.CheckpointLocationKey, Spark.checkpointLocation)
+        .trigger(ProcessingTime(config.getSparkQueryTrigger))
+        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
         .queryName("persister")
         .foreach(new ForeachWriter[Row]() {
           override def open(partitionId: Long, version: Long) = true
@@ -90,7 +96,7 @@ object Persister {
           override def close(errorOrNull: Throwable) {}
 
           def cql(id: Long, timestamp: Timestamp, value: Int, producerId: String): String =
-            s""" insert into ${Cassandra.keyspace}.signals (id, timestamp, value, producerId) values($id, '$timestamp', $value, '$producerId')"""
+            s""" insert into ${config.getCassandraKeyspace}.signals (id, timestamp, value, producerId) values($id, '$timestamp', $value, '$producerId')"""
 
         }).start
       persister.awaitTermination()

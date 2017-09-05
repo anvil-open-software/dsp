@@ -1,11 +1,11 @@
 package com.dematic.labs.dsp.drivers.kafka
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
-import com.dematic.labs.dsp.configuration.DriverConfiguration._
+import com.dematic.labs.dsp.configuration.DefaultDriverConfiguration
 import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.streaming.OutputMode.Complete
-import org.apache.spark.sql.streaming.ProcessingTime
+import org.apache.spark.sql.streaming.Trigger._
 
 /** Setting the system property to define the configuration file:
   *
@@ -13,23 +13,27 @@ import org.apache.spark.sql.streaming.ProcessingTime
   */
 object CumulativeCount {
   def main(args: Array[String]) {
+    // driver configuration
+    val config = new DefaultDriverConfiguration.Builder().build
+
     // create the spark session
     val builder: SparkSession.Builder = SparkSession.builder
-    if (!Strings.isNullOrEmpty(Spark.masterUrl)) builder.master(Spark.masterUrl)
-    builder.appName(Driver.appName)
+    if (!Strings.isNullOrEmpty(config.getSparkMaster)) builder.master(config.getSparkMaster)
+    builder.appName(config.getDriverAppName)
     val spark: SparkSession = builder.getOrCreate
 
     // hook up Prometheus listener for monitoring
     if (sys.props.contains(MonitorConsts.SPARK_QUERY_MONITOR_PUSH_GATEWAY)) {
-      spark.streams.addListener(new PrometheusStreamingQueryListener(spark.sparkContext.getConf,Driver.appName))
+      spark.streams.addListener(new PrometheusStreamingQueryListener(spark.sparkContext.getConf, config.getDriverAppName))
     }
 
     // create the input source, kafka
     val kafka = spark.readStream
-      .format(Kafka.format())
-      .option(Kafka.BootstrapServersKey, Kafka.bootstrapServers)
-      .option(Kafka.subscribe, Kafka.topics)
-      .option(Kafka.TopicSubscriptionKey, Kafka.startingOffsets)
+      .format("kafka")
+      .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
+      .option(config.getKafkaSubscribe, config.getKafkaTopics)
+      .option("startingOffsets", config.getKafkaStartingOffsets)
+      .option("maxOffsetsPerTrigger", config.getKafkaMaxOffsetsPerTrigger)
       .load
 
     // kafka schema is the following: input columns: [value, timestamp, timestampType, partition, key, topic, offset]
@@ -40,8 +44,8 @@ object CumulativeCount {
     //2) write count to an output sink
     val query = totalCount.writeStream
       .format("console")
-      .trigger(ProcessingTime(Spark.queryTrigger))
-      .option(Spark.CheckpointLocationKey, Spark.checkpointLocation)
+      .trigger(ProcessingTime(config.getSparkQueryTrigger))
+      .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
       .queryName("total_count")
       .outputMode(Complete)
       .start

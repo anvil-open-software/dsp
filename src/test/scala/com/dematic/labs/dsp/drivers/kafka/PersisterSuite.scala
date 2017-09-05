@@ -2,11 +2,15 @@ package com.dematic.labs.dsp.drivers.kafka
 
 import java.io.InputStream
 import java.lang.Thread.sleep
+import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 
+import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration
 import com.dematic.labs.toolkit_bigdata.simulators.diagnostics.Signals
 import info.batey.kafka.unit.KafkaUnit
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper._
+import org.junit.Rule
+import org.junit.rules.TemporaryFolder
 import org.scalatest.{BeforeAndAfter, FunSuite}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -20,11 +24,15 @@ import scala.util.{Failure, Success}
 class PersisterSuite extends FunSuite with BeforeAndAfter {
   val logger: Logger = LoggerFactory.getLogger("PersisterSuite")
 
+  @Rule var checkpoint = new TemporaryFolder
+
   val kafkaServer = new KafkaUnit
   val topicAndKeyspace = "persister"
   val expectedNumberOfSignals = 100
 
   before {
+    // create the checkpoint dir
+    checkpoint.create()
     // 1) start kafka server and create topic, only one broker created during testing
     kafkaServer.setKafkaBrokerConfig("offsets.topic.replication.factor", "1")
     kafkaServer.startup()
@@ -33,39 +41,19 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
     startEmbeddedCassandra(CASSANDRA_RNDPORT_YML_FILE)
     logger.info(s"kafka server = '${kafkaServer.getKafkaConnect}' cassandra = 'localhost:$getNativeTransportPort'")
 
-    // override properties from application.conf
-    // driver properties
-    System.setProperty("driver.appName", topicAndKeyspace)
-    // spark properties
-    System.setProperty("spark.cassandra.connection.host", "localhost")
-    System.setProperty("spark.cassandra.connection.port", getNativeTransportPort.toString)
-    System.setProperty("spark.cassandra.auth.username", "none")
-    System.setProperty("spark.cassandra.auth.password", "none")
-    // kafka properties, will be used for producer and driver
-    System.setProperty("kafka.bootstrap.servers", kafkaServer.getKafkaConnect)
-    System.setProperty("kafka.topics", topicAndKeyspace)
-    // cassandra properties
-    System.setProperty("cassandra.keyspace", topicAndKeyspace)
+    // 3) configure the driver
+    val uri = getClass.getResource("/persister.conf").toURI
+    val config = new DriverUnitTestConfiguration.Builder(Paths.get(uri).toFile)
+      .sparkCheckpointLocation(checkpoint.getRoot.getPath)
+      .kafkaBootstrapServer(kafkaServer.getKafkaConnect)
+      .sparkCassandraConnectionHost(getNativeTransportPort.toString).build
+
     // producer Id
     System.setProperty("producer.Id", "PersisterSuite")
   }
 
   after {
-    // shutdown kafka
-    try {
-      kafkaServer.shutdown()
-    } finally {
-      // clear all properties
-      System.clearProperty("driver.appName")
-      System.clearProperty("spark.cassandra.connection.host")
-      System.clearProperty("spark.cassandra.connection.port")
-      System.clearProperty("spark.cassandra.auth.username")
-      System.clearProperty("spark.cassandra.auth.password")
-      System.clearProperty("kafka.bootstrap.servers")
-      System.clearProperty("kafka.topics")
-      System.clearProperty("cassandra.keyspace")
-      System.clearProperty("producer.Id")
-    }
+    kafkaServer.shutdown()
   }
 
   test("complete DSP Persister test, push signals to kafka, spark consumes and persist to cassandra") {
