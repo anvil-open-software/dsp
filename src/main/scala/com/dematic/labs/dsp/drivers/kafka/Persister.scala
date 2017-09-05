@@ -5,7 +5,7 @@ import java.text.{DateFormat, SimpleDateFormat}
 
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
-import com.dematic.labs.dsp.configuration.DefaultDriverConfiguration
+import com.dematic.labs.dsp.configuration.{DefaultDriverConfiguration, DriverConfiguration}
 import com.google.common.base.Strings
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
@@ -17,6 +17,13 @@ import org.apache.spark.sql.types.{StringType, StructField, StructType, _}
   * Persist raw signals to Cassandra.
   */
 object Persister {
+  // should only be  used with testing
+  private var injectedDriverConfiguration:DriverConfiguration = _
+
+  private[drivers] def setDriverConfiguration(driverConfiguration: DriverConfiguration) {
+    injectedDriverConfiguration = driverConfiguration
+  }
+
   def main(args: Array[String]) {
     // driver configuration
     val config = new DefaultDriverConfiguration.Builder().build

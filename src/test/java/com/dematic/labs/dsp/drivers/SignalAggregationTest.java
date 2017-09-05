@@ -1,5 +1,6 @@
 package com.dematic.labs.dsp.drivers;
 
+import com.dematic.labs.dsp.configuration.DriverConfiguration;
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration;
 import info.batey.kafka.unit.KafkaUnit;
 import org.apache.thrift.transport.TTransportException;
@@ -44,13 +45,11 @@ public final class SignalAggregationTest {
         LOGGER.info("kafka server = '{}' cassandra = 'localhost:{}'", kafkaServer.getKafkaConnect(),
                 getNativeTransportPort());
 
-        final DriverUnitTestConfiguration config = builder.sparkCheckpointLocation(checkpoint.getRoot().getPath())
+        final DriverConfiguration config = builder.sparkCheckpointLocation(checkpoint.getRoot().getPath())
                 .sparkCassandraConnectionHost(Integer.toString(getNativeTransportPort()))
                 .kafkaBootstrapServer(kafkaServer.getKafkaConnect())
                 .build();
-        System.out.println(config);
-
-      //  SignalAggregation.main();
+        SignalAggregation.setDriverConfiguration(config);
     }
 
     @After

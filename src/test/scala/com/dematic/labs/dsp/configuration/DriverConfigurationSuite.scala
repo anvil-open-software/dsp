@@ -21,7 +21,7 @@ class DriverConfigurationSuite extends FunSuite {
     assert(config.getSparkQueryTrigger === "0 seconds")
     // kafka properties
     // from persister.conf
-    assert(config.getKafkaBootstrapServer === "localhost:9092")
+    assert(config.getKafkaBootstrapServers === "localhost:9092")
     // from persister.conf
     assert(config.getKafkaTopics === "persister")
   }

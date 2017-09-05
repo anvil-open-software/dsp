@@ -7,7 +7,7 @@ public final class DriverUnitTestConfiguration extends DriverConfiguration {
         // dynamic overridden values used in testing
         private String sparkCheckpointLocation;
         private String sparkCassandraConnectionHost;
-        private String kafkaBootstrapServer;
+        private String kafkaBootstrapServers;
 
         public Builder(final File resource) {
             super(resource);
@@ -23,8 +23,8 @@ public final class DriverUnitTestConfiguration extends DriverConfiguration {
             return this;
         }
 
-        public Builder kafkaBootstrapServer(final String kafkaBootstrapServer) {
-            this.kafkaBootstrapServer = kafkaBootstrapServer;
+        public Builder kafkaBootstrapServer(final String kafkaBootstrapServers) {
+            this.kafkaBootstrapServers = kafkaBootstrapServers;
             return this;
         }
 
@@ -35,7 +35,7 @@ public final class DriverUnitTestConfiguration extends DriverConfiguration {
 
     private final String sparkCheckpointLocation;
     private final String sparkCassandraConnectionHost;
-    private final String kafkaBootstrapServer;
+    private final String kafkaBootstrapServers;
 
     DriverUnitTestConfiguration(final Builder builder) {
         super(builder);
@@ -44,7 +44,7 @@ public final class DriverUnitTestConfiguration extends DriverConfiguration {
                 super.getSparkCheckpointLocation();
         sparkCassandraConnectionHost = builder.sparkCassandraConnectionHost != null ?
                 builder.sparkCassandraConnectionHost : super.getSparkCassandraConnectionHost();
-        kafkaBootstrapServer = builder.kafkaBootstrapServer != null ? builder.kafkaBootstrapServer :
+        kafkaBootstrapServers = builder.kafkaBootstrapServers != null ? builder.kafkaBootstrapServers :
                 super.getKafkaBootstrapServers();
     }
 
@@ -58,7 +58,7 @@ public final class DriverUnitTestConfiguration extends DriverConfiguration {
         return sparkCassandraConnectionHost;
     }
 
-    public String getKafkaBootstrapServer() {
-        return kafkaBootstrapServer;
+    public String getKafkaBootstrapServers() {
+        return kafkaBootstrapServers;
     }
 }

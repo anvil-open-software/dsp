@@ -47,9 +47,11 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
       .sparkCheckpointLocation(checkpoint.getRoot.getPath)
       .kafkaBootstrapServer(kafkaServer.getKafkaConnect)
       .sparkCassandraConnectionHost(getNativeTransportPort.toString).build
+    // set the configuration
+    Persister.setDriverConfiguration(config)
 
-    // producer Id
-    System.setProperty("producer.Id", "PersisterSuite")
+   /* // producer Id
+    System.setProperty("producer.Id", "PersisterSuite")*/
   }
 
   after {

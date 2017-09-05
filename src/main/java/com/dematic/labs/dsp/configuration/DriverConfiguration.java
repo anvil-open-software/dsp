@@ -4,8 +4,9 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
 import java.io.File;
+import java.io.Serializable;
 
-public abstract class DriverConfiguration {
+public abstract class DriverConfiguration implements Serializable {
     public static abstract class Builder {
         // Driver Keys
         private static final String DRIVER_APP_NAME_KEY = "driver.appName";

@@ -6,6 +6,7 @@ import com.datastax.spark.connector.cql.CassandraConnector;
 import com.dematic.labs.analytics.monitor.spark.MonitorConsts;
 import com.dematic.labs.analytics.monitor.spark.PrometheusStreamingQueryListener;
 import com.dematic.labs.dsp.configuration.DefaultDriverConfiguration;
+import com.dematic.labs.dsp.configuration.DriverConfiguration;
 import com.google.common.base.Strings;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.streaming.StreamingQuery;
@@ -21,8 +22,16 @@ import static scala.compat.java8.JFunction.func;
  * -Dconfig.file=path/to/file/signalAggregation.conf
  */
 public final class SignalAggregation {
+    // should only be  used with testing
+    private static DriverConfiguration injectedDriverConfiguration;
+
+    static void setDriverConfiguration(final DriverConfiguration driverConfiguration) {
+        injectedDriverConfiguration = driverConfiguration;
+    }
+
     public static void main(final String[] args) throws StreamingQueryException {
-        final DefaultDriverConfiguration config = new DefaultDriverConfiguration.Builder().build();
+        final DriverConfiguration config = injectedDriverConfiguration != null ? injectedDriverConfiguration :
+                new DefaultDriverConfiguration.Builder().build();
         // create the spark session
         final SparkSession.Builder builder = SparkSession.builder();
         final String masterUrl = config.getSparkMaster();
