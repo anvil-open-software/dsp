@@ -16,7 +16,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <scala.major.minor.version>2.11.8</scala.major.minor.version>
+        <scala.major.minor.version>2.11.11</scala.major.minor.version>
     </properties>
 
     <dependencyManagement>
@@ -42,11 +42,23 @@
       </dependencyManagement>
 
     <dependencies>
+        <!-- scala dependencies -->
+            <dependency>
+                <groupId>org.scala-lang</groupId>
+                <artifactId>scala-library</artifactId>
+                <version>${scala.major.minor.version}</version>
+        </dependency>
+        <!-- supports compatibility between java 8 and scala, most issues fixed in scala 2.12.x -->
+        <dependency>
+            <groupId>org.scala-lang.modules</groupId>
+            <artifactId>scala-java8-compat_2.11</artifactId>
+            <version>0.8.0</version>
+        </dependency>
         <!-- dlabs dependencies -->
         <dependency>
             <groupId>com.dematic.labs.toolkit_bigdata</groupId>
             <artifactId>simulators</artifactId>
-            <version>1.0.11</version>
+            <version>1.0.12-SNAPSHOT</version>
         </dependency>
         <!-- spark sql/data frames/data sets -->
         <dependency>
@@ -141,6 +153,12 @@
             <groupId>org.cassandraunit</groupId>
             <artifactId>cassandra-unit</artifactId>
         </dependency>
+        <!-- test helpers -->
+        <dependency>
+            <groupId>com.jayway.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- prometheus monitoring -->
         <dependency>
@@ -161,13 +179,62 @@
         </dependency>
     </dependencies>
 
-
     <!-- We use the maven-assembly plugin to create a fat jar that contains all dependencies
         except spark and its transitive dependencies. The resulting fat-jar can be executed
         on a cluster. Change the value of Program-Class if your program entry point changes. -->
     <build>
         <defaultGoal>clean install</defaultGoal>
         <plugins>
+            <!-- This plugin compiles Java files -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.6.1</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- This plugin compiles Scala files -->
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>3.2.2</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>testCompile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- test scala -->
+            <plugin>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest-maven-plugin</artifactId>
+                <version>1.0</version>
+                <configuration>
+                    <parallel>false</parallel>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>test</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
             <!-- We use the maven-shade plugin to create a fat jar that contains all dependencies
             except spark and it's transitive dependencies. The resulting fat-jar can be executed
             on a cluster. Change the value of Program-Class if your program entry point changes. -->
@@ -212,15 +279,6 @@
             </plugin>
 
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.6.1</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
                 <version>3.0.0</version>
@@ -238,39 +296,13 @@
                                     <type>cql</type>
                                     <classifier>persister</classifier>
                                 </artifact>
+                                <artifact>
+                                    <file>src/main/resources/signalAggregation.cql</file>
+                                    <type>cql</type>
+                                    <classifier>signalAggregation</classifier>
+                                </artifact>
                             </artifacts>
                         </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- compile scala -->
-            <plugin>
-                <groupId>net.alchim31.maven</groupId>
-                <artifactId>scala-maven-plugin</artifactId>
-                <version>3.2.2</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>testCompile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- test scala -->
-            <plugin>
-                <groupId>org.scalatest</groupId>
-                <artifactId>scalatest-maven-plugin</artifactId>
-                <version>1.0</version>
-                <configuration>
-                    <parallel>false</parallel>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>test</id>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
                     </execution>
                 </executions>
             </plugin>
