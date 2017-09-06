@@ -4,7 +4,10 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.dematic.labs.dsp.configuration.DriverConfiguration;
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration;
+import com.dematic.labs.dsp.producers.Signals;
+import com.jayway.awaitility.Awaitility;
 import info.batey.kafka.unit.KafkaUnit;
+import org.apache.spark.sql.streaming.StreamingQueryException;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
@@ -16,6 +19,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static org.cassandraunit.utils.EmbeddedCassandraServerHelper.*;
@@ -25,20 +31,18 @@ public final class SignalAggregationTest {
     private static final String KEYSPACE = "signal_aggregation";
 
     @Rule
-    public TemporaryFolder checkpoint = new TemporaryFolder();
+    public final TemporaryFolder checkpoint = new TemporaryFolder();
 
-    private final DriverUnitTestConfiguration.Builder builder;
+    private DriverConfiguration config;
     private final KafkaUnit kafkaServer;
 
-    public SignalAggregationTest() throws IOException, URISyntaxException {
+    public SignalAggregationTest() throws IOException {
         checkpoint.create();
-        final URI uri = getClass().getResource("/signalAggregation.conf").toURI();
-        builder = new DriverUnitTestConfiguration.Builder(Paths.get(uri).toFile());
         kafkaServer = new KafkaUnit();
     }
 
     @Before
-    public void initialize() throws IOException, TTransportException {
+    public void initialize() throws IOException, TTransportException, URISyntaxException {
         // 1) start kafka server and create topic, only one broker created during testing
         kafkaServer.setKafkaBrokerConfig("offsets.topic.replication.factor", "1");
         kafkaServer.startup();
@@ -47,7 +51,9 @@ public final class SignalAggregationTest {
         LOGGER.info("kafka server = '{}' cassandra = 'localhost:{}'", kafkaServer.getKafkaConnect(),
                 getNativeTransportPort());
 
-        final DriverConfiguration config = builder.sparkCheckpointLocation(checkpoint.getRoot().getPath())
+        final URI uri = getClass().getResource("/signalAggregation.conf").toURI();
+        final DriverUnitTestConfiguration.Builder builder = new DriverUnitTestConfiguration.Builder(Paths.get(uri).toFile());
+        config = builder.sparkCheckpointLocation(checkpoint.getRoot().getPath())
                 .sparkCassandraConnectionHost("localhost")
                 .sparkCassandraConnectionPort(Integer.toString(getNativeTransportPort()))
                 .kafkaBootstrapServer(kafkaServer.getKafkaConnect())
@@ -79,7 +85,27 @@ public final class SignalAggregationTest {
             }
         }
         // 2) start the driver asynchronously
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+        executorService.submit(() -> {
+            try {
+                SignalAggregation.main(null);
+            } catch (final StreamingQueryException sqe) {
+                throw new RuntimeException("Unexpected Error:", sqe);
+            }
+        });
 
+        // 3) push signal to kafka
+        new Signals(kafkaServer.getKafkaConnect(), config.getKafkaTopics(), 500,
+                "signalAggregationProducer");
+        // 4) query cassandra until all the signals have been aggregated
+        // set the defaults timeouts
+        Awaitility.setDefaultTimeout(3, TimeUnit.MINUTES);
+
+
+         // poll cassandra until aggregation tabls count is greater the 10 todo: bug created
+        /*Awaitility.with().pollInterval(10, TimeUnit.SECONDS).and().with().
+                pollDelay(10, TimeUnit.SECONDS).await().
+                until(() -> Assert.assertEquals(1, 3));
+*/
     }
 }
-

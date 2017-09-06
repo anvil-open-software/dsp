@@ -13,6 +13,8 @@ import org.apache.spark.sql.streaming.StreamingQuery;
 import org.apache.spark.sql.streaming.StreamingQueryException;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.Symbol;
 
 import static org.apache.spark.sql.types.DataTypes.*;
@@ -22,6 +24,7 @@ import static scala.compat.java8.JFunction.func;
  * -Dconfig.file=path/to/file/signalAggregation.conf
  */
 public final class SignalAggregation {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SignalAggregation.class);
     // should only be  used with testing
     private static DriverConfiguration injectedDriverConfiguration;
 
@@ -76,7 +79,6 @@ public final class SignalAggregation {
             final Dataset<Row> signals = kafka.selectExpr("cast (value as string) as json").
                     select(functions.from_json(new Column("json"), schema)).as("signals").select("signals.*");
 
-            // todo: looking watermark time
             final Dataset<Row> aggregate = signals.groupBy(
                     functions.window(new Column("timestamp"), "5 minutes")
                             .as(Symbol.apply("aggregate_time")), new Column("opcTagId")).
@@ -86,6 +88,7 @@ public final class SignalAggregation {
                             functions.max("value"),
                             functions.sum("value"));
 
+
             // write to cassandra
             final StreamingQuery query = aggregate.writeStream()
                     .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation())
@@ -93,15 +96,18 @@ public final class SignalAggregation {
                     .foreach(new ForeachWriter<Row>() {
                         @Override
                         public void process(final Row value) {
+                            System.out.println();
                             cassandraConnector.withSessionDo(func(session -> session.execute(cql(value))));
                         }
 
                         @Override
                         public void close(final Throwable errorOrNull) {
+                            System.out.println();
                         }
 
                         @Override
                         public boolean open(final long partitionId, final long version) {
+                            System.out.println();
                             return true;
                         }
 
@@ -117,8 +123,11 @@ public final class SignalAggregation {
                         }
                     }).start();
             query.awaitTermination();
+        } catch (final Throwable t) {
+            LOGGER.error(t.toString());
         } finally {
             sparkSession.close();
         }
+
     }
 }
