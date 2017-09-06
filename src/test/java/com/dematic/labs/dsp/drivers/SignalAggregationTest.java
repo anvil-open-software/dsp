@@ -4,7 +4,7 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.dematic.labs.dsp.configuration.DriverConfiguration;
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration;
-import com.dematic.labs.dsp.producers.Signals;
+import com.dematic.labs.toolkit_bigdata.simulators.diagnostics.SignalUtils;
 import com.jayway.awaitility.Awaitility;
 import info.batey.kafka.unit.KafkaUnit;
 import org.apache.spark.sql.streaming.StreamingQueryException;
@@ -95,14 +95,14 @@ public final class SignalAggregationTest {
         });
 
         // 3) push signal to kafka
-        new Signals(kafkaServer.getKafkaConnect(), config.getKafkaTopics(), 500,
+        new SignalUtils(kafkaServer.getKafkaConnect(), config.getKafkaTopics(), 500,
                 "signalAggregationProducer");
         // 4) query cassandra until all the signals have been aggregated
         // set the defaults timeouts
         Awaitility.setDefaultTimeout(3, TimeUnit.MINUTES);
 
 
-         // poll cassandra until aggregation tabls count is greater the 10 todo: bug created
+        // poll cassandra until aggregation tabls count is greater the 10 todo: bug created
         /*Awaitility.with().pollInterval(10, TimeUnit.SECONDS).and().with().
                 pollDelay(10, TimeUnit.SECONDS).await().
                 until(() -> Assert.assertEquals(1, 3));
