@@ -6,7 +6,7 @@ import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration
-import com.dematic.labs.toolkit_bigdata.simulators.diagnostics.Signals
+import com.dematic.labs.dsp.producers.Signals
 import info.batey.kafka.unit.KafkaUnit
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper._
 import org.junit.Rule
@@ -46,12 +46,11 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
     val config = new DriverUnitTestConfiguration.Builder(Paths.get(uri).toFile)
       .sparkCheckpointLocation(checkpoint.getRoot.getPath)
       .kafkaBootstrapServer(kafkaServer.getKafkaConnect)
-      .sparkCassandraConnectionHost(getNativeTransportPort.toString).build
+      .sparkCassandraConnectionHost("localhost")
+      .sparkCassandraConnectionPort(getNativeTransportPort.toString)
+      .build
     // set the configuration
     Persister.setDriverConfiguration(config)
-
-   /* // producer Id
-    System.setProperty("producer.Id", "PersisterSuite")*/
   }
 
   after {
@@ -84,7 +83,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
             }
 
             // 2) push signal to kafka
-            Signals.main(Array(expectedNumberOfSignals.toString))
+            new Signals(kafkaServer.getKafkaConnect, topicAndKeyspace, expectedNumberOfSignals, "persisterProducer")
 
             // 3) query cassandra until all the signals have been saved
             val count: Future[Long] = Future {

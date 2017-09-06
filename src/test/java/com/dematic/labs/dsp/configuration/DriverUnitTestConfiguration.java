@@ -7,6 +7,7 @@ public final class DriverUnitTestConfiguration extends DriverConfiguration {
         // dynamic overridden values used in testing
         private String sparkCheckpointLocation;
         private String sparkCassandraConnectionHost;
+        private String sparkCassandraConnectionPort;
         private String kafkaBootstrapServers;
 
         public Builder(final File resource) {
@@ -23,6 +24,11 @@ public final class DriverUnitTestConfiguration extends DriverConfiguration {
             return this;
         }
 
+        public Builder sparkCassandraConnectionPort(final String sparkCassandraConnectionPort) {
+            this.sparkCassandraConnectionPort = sparkCassandraConnectionPort;
+            return this;
+        }
+
         public Builder kafkaBootstrapServer(final String kafkaBootstrapServers) {
             this.kafkaBootstrapServers = kafkaBootstrapServers;
             return this;
@@ -35,6 +41,7 @@ public final class DriverUnitTestConfiguration extends DriverConfiguration {
 
     private final String sparkCheckpointLocation;
     private final String sparkCassandraConnectionHost;
+    private final String sparkCassandraConnectionPort;
     private final String kafkaBootstrapServers;
 
     DriverUnitTestConfiguration(final Builder builder) {
@@ -44,6 +51,8 @@ public final class DriverUnitTestConfiguration extends DriverConfiguration {
                 super.getSparkCheckpointLocation();
         sparkCassandraConnectionHost = builder.sparkCassandraConnectionHost != null ?
                 builder.sparkCassandraConnectionHost : super.getSparkCassandraConnectionHost();
+        sparkCassandraConnectionPort = builder.sparkCassandraConnectionPort != null ?
+                builder.sparkCassandraConnectionPort : super.getSparkCassandraConnectionPort();
         kafkaBootstrapServers = builder.kafkaBootstrapServers != null ? builder.kafkaBootstrapServers :
                 super.getKafkaBootstrapServers();
     }
@@ -56,6 +65,10 @@ public final class DriverUnitTestConfiguration extends DriverConfiguration {
     @Override
     public String getSparkCassandraConnectionHost() {
         return sparkCassandraConnectionHost;
+    }
+
+    public String getSparkCassandraConnectionPort() {
+        return sparkCassandraConnectionPort;
     }
 
     public String getKafkaBootstrapServers() {

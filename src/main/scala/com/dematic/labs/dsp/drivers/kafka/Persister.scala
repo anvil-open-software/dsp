@@ -37,6 +37,7 @@ object Persister {
     if (!Strings.isNullOrEmpty(config.getSparkMaster)) builder.master(config.getSparkMaster)
     builder.appName(config.getDriverAppName)
     builder.config("spark.cassandra.connection.host", config.getSparkCassandraConnectionHost)
+    builder.config("spark.cassandra.connection.port", config.getSparkCassandraConnectionPort)
     builder.config("spark.cassandra.auth.username", config.getSparkCassandraAuthUsername)
     builder.config("spark.cassandra.auth.password", config.getSparkCassandraAuthPassword)
     val sparkSession: SparkSession = builder.getOrCreate

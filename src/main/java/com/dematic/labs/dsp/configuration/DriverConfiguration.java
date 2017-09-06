@@ -18,6 +18,7 @@ public abstract class DriverConfiguration implements Serializable {
         private static final String SPARK_WATERMARK_TIME_KEY = "spark.watermark.time";
         private static final String SPARK_QUERY_TRIGGER_KEY = "spark.query.trigger";
         private static final String SPARK_CASSANDRA_CONNECTION_HOST_KEY = "spark.cassandra.connection.host";
+        private static final String SPARK_CASSANDRA_CONNECTION_PORT_KEY = "spark.cassandra.connection.port";
         private static final String SPARK_CASSANDRA_AUTH_USERNAME_KEY = "spark.cassandra.auth.username";
         private static final String SPARK_CASSANDRA_AUTH_PASSWORD_KEY = "spark.cassandra.auth.password";
         // Kafka Keys
@@ -41,6 +42,7 @@ public abstract class DriverConfiguration implements Serializable {
         private String sparkWatermarkTime;
         private String sparkQueryTrigger;
         private String sparkCassandraConnectionHost;
+        private String sparkCassandraConnectionPort;
         private String sparkCassandraAuthUsername;
         private String sparkCassandraAuthPassword;
         // kafka properties
@@ -72,6 +74,7 @@ public abstract class DriverConfiguration implements Serializable {
             sparkWatermarkTime = config.getString(SPARK_WATERMARK_TIME_KEY);
             sparkQueryTrigger = config.getString(SPARK_QUERY_TRIGGER_KEY);
             sparkCassandraConnectionHost = config.getString(SPARK_CASSANDRA_CONNECTION_HOST_KEY);
+            sparkCassandraConnectionPort = config.getString(SPARK_CASSANDRA_CONNECTION_PORT_KEY);
             sparkCassandraAuthUsername = config.getString(SPARK_CASSANDRA_AUTH_USERNAME_KEY);
             sparkCassandraAuthPassword = config.getString(SPARK_CASSANDRA_AUTH_PASSWORD_KEY);
             kafkaBootstrapServers = config.getString(KAFKA_BOOTSTRAP_SERVERS_KEY);
@@ -95,6 +98,7 @@ public abstract class DriverConfiguration implements Serializable {
     private final String sparkWatermarkTime;
     private final String sparkQueryTrigger;
     private final String sparkCassandraConnectionHost;
+    private final String sparkCassandraConnectionPort;
     private final String sparkCassandraAuthUsername;
     private final String sparkCassandraAuthPassword;
     // kafka properties
@@ -116,6 +120,7 @@ public abstract class DriverConfiguration implements Serializable {
         sparkWatermarkTime = builder.sparkWatermarkTime;
         sparkQueryTrigger = builder.sparkQueryTrigger;
         sparkCassandraConnectionHost = builder.sparkCassandraConnectionHost;
+        sparkCassandraConnectionPort = builder.sparkCassandraConnectionPort;
         sparkCassandraAuthUsername = builder.sparkCassandraAuthUsername;
         sparkCassandraAuthPassword = builder.sparkCassandraAuthPassword;
         kafkaBootstrapServers = builder.kafkaBootstrapServers;
@@ -156,6 +161,10 @@ public abstract class DriverConfiguration implements Serializable {
 
     public String getSparkCassandraConnectionHost() {
         return sparkCassandraConnectionHost;
+    }
+
+    public String getSparkCassandraConnectionPort() {
+        return sparkCassandraConnectionPort;
     }
 
     public String getSparkCassandraAuthUsername() {
