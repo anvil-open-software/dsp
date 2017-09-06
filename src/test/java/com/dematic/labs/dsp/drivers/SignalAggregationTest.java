@@ -81,7 +81,7 @@ public final class SignalAggregationTest {
                 // move to keyspace
                 session.execute(String.format("USE %s", KEYSPACE));
                 // create table from cql
-                final URI uri = getClass().getResource("/SignalAggregation.cql").toURI();
+                final URI uri = getClass().getResource("/signalAggregation.cql").toURI();
                 try (final Stream<String> stream =
                              Files.lines(Paths.get(uri)).filter(f -> !f.startsWith("//"))) {
                     stream.forEach(session::execute);

@@ -96,7 +96,6 @@ public final class SignalAggregation {
                     .foreach(new ForeachWriter<Row>() {
                         @Override
                         public void process(final Row value) {
-                            System.out.println();
                             cassandraConnector.withSessionDo(func(session -> session.execute(cql(value))));
                         }
 
@@ -107,7 +106,6 @@ public final class SignalAggregation {
 
                         @Override
                         public boolean open(final long partitionId, final long version) {
-                            System.out.println();
                             return true;
                         }
 
@@ -128,6 +126,5 @@ public final class SignalAggregation {
         } finally {
             sparkSession.close();
         }
-
     }
 }
