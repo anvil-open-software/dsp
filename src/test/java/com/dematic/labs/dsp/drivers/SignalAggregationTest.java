@@ -1,13 +1,12 @@
 package com.dematic.labs.dsp.drivers;
 
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.Session;
 import com.dematic.labs.dsp.configuration.DriverConfiguration;
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration;
 import info.batey.kafka.unit.KafkaUnit;
 import org.apache.thrift.transport.TTransportException;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,12 +14,15 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 import static org.cassandraunit.utils.EmbeddedCassandraServerHelper.*;
 
 public final class SignalAggregationTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalAggregationTest.class);
+    private static final String KEYSPACE = "signal_aggregation";
 
     @Rule
     public TemporaryFolder checkpoint = new TemporaryFolder();
@@ -46,7 +48,8 @@ public final class SignalAggregationTest {
                 getNativeTransportPort());
 
         final DriverConfiguration config = builder.sparkCheckpointLocation(checkpoint.getRoot().getPath())
-                .sparkCassandraConnectionHost(Integer.toString(getNativeTransportPort()))
+                .sparkCassandraConnectionHost("localhost")
+                .sparkCassandraConnectionPort(Integer.toString(getNativeTransportPort()))
                 .kafkaBootstrapServer(kafkaServer.getKafkaConnect())
                 .build();
         SignalAggregation.setDriverConfiguration(config);
@@ -58,7 +61,25 @@ public final class SignalAggregationTest {
     }
 
     @Test
-    public void all() {
+    public void all() throws IOException, URISyntaxException {
+        //1 )  create a cassandra cluster and connect and create keyspace and table
+        try (final Cluster cluster = getCluster()) {
+            try (final Session session = cluster.connect()) {
+                // create keyspace
+                session.execute(String.format("CREATE KEYSPACE if not exists %s WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };", KEYSPACE));
+                Assert.assertEquals(KEYSPACE, cluster.getMetadata().getKeyspace(KEYSPACE).getName());
+                // move to keyspace
+                session.execute(String.format("USE %s", KEYSPACE));
+                // create table from cql
+                final URI uri = getClass().getResource("/SignalAggregation.cql").toURI();
+                try (final Stream<String> stream =
+                             Files.lines(Paths.get(uri)).filter(f -> !f.startsWith("//"))) {
+                    stream.forEach(session::execute);
+                }
+            }
+        }
+        // 2) start the driver asynchronously
+
     }
 }
 
