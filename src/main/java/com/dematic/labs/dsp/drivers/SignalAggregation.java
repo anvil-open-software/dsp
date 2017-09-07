@@ -9,6 +9,7 @@ import com.dematic.labs.dsp.configuration.DefaultDriverConfiguration;
 import com.dematic.labs.dsp.configuration.DriverConfiguration;
 import com.google.common.base.Strings;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.streaming.OutputMode;
 import org.apache.spark.sql.streaming.StreamingQuery;
 import org.apache.spark.sql.streaming.StreamingQueryException;
 import org.apache.spark.sql.types.StructField;
@@ -75,23 +76,23 @@ public final class SignalAggregation {
                     .add(new StructField("value", IntegerType, false, null))
                     .add(new StructField("producerId", StringType, true, null));
 
-            // convert to json and select all values
+            // retrieve signals as json
             final Dataset<Row> signals = kafka.selectExpr("cast (value as string) as json").
-                    select(functions.from_json(new Column("json"), schema)).as("signals").select("signals.*");
+                    select(functions.from_json(new ColumnName("json"), schema).as("signals")).select("signals.*");
 
-            final Dataset<Row> aggregate = signals.groupBy(
-                    functions.window(new Column("timestamp"), "5 minutes")
-                            .as(Symbol.apply("aggregate_time")), new Column("opcTagId")).
-                    agg(
-                            functions.count("opcTagId"),
+            // group by id and 5 minute intervals, and calculate stats
+            final Dataset<Row> aggregate = signals.groupBy(functions.window(signals.col("timestamp"), "5 minutes")
+                    .as(Symbol.apply("aggregate_time")), signals.col("id"))
+                    .agg(
+                            functions.count("id"),
                             functions.avg("value"),
                             functions.max("value"),
                             functions.sum("value"));
 
-
             // write to cassandra
             final StreamingQuery query = aggregate.writeStream()
                     .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation())
+                    .outputMode(OutputMode.Complete())
                     .queryName("signalAggregation")
                     .foreach(new ForeachWriter<Row>() {
                         @Override
@@ -121,8 +122,8 @@ public final class SignalAggregation {
                         }
                     }).start();
             query.awaitTermination();
-        } catch (final Throwable t) {
-            LOGGER.error(t.toString());
+        } catch (final Throwable any) {
+            LOGGER.error(any.toString());
         } finally {
             sparkSession.close();
         }
