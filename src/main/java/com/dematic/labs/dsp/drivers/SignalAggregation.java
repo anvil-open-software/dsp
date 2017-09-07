@@ -9,6 +9,7 @@ import com.dematic.labs.dsp.configuration.DefaultDriverConfiguration;
 import com.dematic.labs.dsp.configuration.DriverConfiguration;
 import com.google.common.base.Strings;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema;
 import org.apache.spark.sql.streaming.OutputMode;
 import org.apache.spark.sql.streaming.StreamingQuery;
 import org.apache.spark.sql.streaming.StreamingQueryException;
@@ -44,6 +45,7 @@ public final class SignalAggregation {
         }
         builder.appName(config.getDriverAppName());
         builder.config("spark.cassandra.connection.host", config.getSparkCassandraConnectionHost());
+        builder.config("spark.cassandra.connection.port", config.getSparkCassandraConnectionPort());
         builder.config("spark.cassandra.auth.username", config.getSparkCassandraAuthUsername());
         builder.config("spark.cassandra.auth.password", config.getSparkCassandraAuthPassword());
 
@@ -86,6 +88,7 @@ public final class SignalAggregation {
                     .agg(
                             functions.count("id"),
                             functions.avg("value"),
+                            functions.min("value"),
                             functions.max("value"),
                             functions.sum("value"));
 
@@ -102,7 +105,6 @@ public final class SignalAggregation {
 
                         @Override
                         public void close(final Throwable errorOrNull) {
-                            System.out.println();
                         }
 
                         @Override
@@ -111,14 +113,15 @@ public final class SignalAggregation {
                         }
 
                         private Statement cql(final Row row) {
+                            final GenericRowWithSchema aggregate = row.getAs(0);
                             return QueryBuilder.update(config.getCassandraKeyspace(), "signal_aggregation")
                                     .with(QueryBuilder.set("count", row.getAs(2)))
                                     .and(QueryBuilder.set("avg", row.getAs(3)))
                                     .and(QueryBuilder.set("min", row.getAs(4)))
                                     .and(QueryBuilder.set("max", row.getAs(5)))
                                     .and(QueryBuilder.set("sum", row.getAs(6)))
-                                    .where(QueryBuilder.eq("opc_tag_id", row.getAs(1)))
-                                    .and(QueryBuilder.eq("aggregate", row.get(0)));
+                                    .where(QueryBuilder.eq("id", row.getAs(1)))
+                                    .and(QueryBuilder.eq("aggregate", aggregate.getAs(0)));
                         }
                     }).start();
             query.awaitTermination();
