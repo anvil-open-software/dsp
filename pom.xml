@@ -164,7 +164,7 @@
         <dependency>
             <groupId>com.dematic.labs.dsp.monitor</groupId>
             <artifactId>dsp-monitor</artifactId>
-            <version>0.0.2</version>
+            <version>0.0.3-SNAPSHOT</version>
 
             <exclusions>
                 <exclusion>
