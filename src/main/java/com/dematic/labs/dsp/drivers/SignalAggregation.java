@@ -52,7 +52,7 @@ public final class SignalAggregation {
         final SparkSession sparkSession = builder.getOrCreate();
 
         // hook up Prometheus listener for monitoring
-        if (System.getProperties().contains(MonitorConsts.SPARK_QUERY_MONITOR_PUSH_GATEWAY)) {
+        if (!Strings.isNullOrEmpty(System.getProperty(MonitorConsts.SPARK_QUERY_MONITOR_PUSH_GATEWAY))) {
             sparkSession.streams().addListener(
                     new PrometheusStreamingQueryListener(sparkSession.sparkContext().getConf(),
                             config.getDriverAppName()));
