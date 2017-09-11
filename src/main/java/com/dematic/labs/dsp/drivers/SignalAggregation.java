@@ -8,8 +8,13 @@ import com.dematic.labs.analytics.monitor.spark.PrometheusStreamingQueryListener
 import com.dematic.labs.dsp.configuration.DefaultDriverConfiguration;
 import com.dematic.labs.dsp.configuration.DriverConfiguration;
 import com.google.common.base.Strings;
-import org.apache.spark.sql.*;
+import org.apache.spark.sql.ColumnName;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.ForeachWriter;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema;
+import org.apache.spark.sql.functions;
 import org.apache.spark.sql.streaming.OutputMode;
 import org.apache.spark.sql.streaming.StreamingQuery;
 import org.apache.spark.sql.streaming.StreamingQueryException;
