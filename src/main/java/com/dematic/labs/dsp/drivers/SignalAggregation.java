@@ -8,20 +8,13 @@ import com.dematic.labs.analytics.monitor.spark.PrometheusStreamingQueryListener
 import com.dematic.labs.dsp.configuration.DefaultDriverConfiguration;
 import com.dematic.labs.dsp.configuration.DriverConfiguration;
 import com.google.common.base.Strings;
-import org.apache.spark.sql.ColumnName;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.ForeachWriter;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.*;
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema;
-import org.apache.spark.sql.functions;
 import org.apache.spark.sql.streaming.OutputMode;
 import org.apache.spark.sql.streaming.StreamingQuery;
 import org.apache.spark.sql.streaming.StreamingQueryException;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import scala.Symbol;
 
 import static org.apache.spark.sql.types.DataTypes.*;
@@ -31,7 +24,6 @@ import static scala.compat.java8.JFunction.func;
  * -Dconfig.file=path/to/file/signalAggregation.conf
  */
 public final class SignalAggregation {
-    private static final Logger LOGGER = LoggerFactory.getLogger(SignalAggregation.class);
     // should only be  used with testing
     private static DriverConfiguration injectedDriverConfiguration;
 
@@ -130,8 +122,6 @@ public final class SignalAggregation {
                         }
                     }).start();
             query.awaitTermination();
-        } catch (final Throwable any) {
-            LOGGER.error(any.toString());
         } finally {
             sparkSession.close();
         }
