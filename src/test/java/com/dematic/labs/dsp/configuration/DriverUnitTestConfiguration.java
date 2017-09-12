@@ -74,4 +74,14 @@ public final class DriverUnitTestConfiguration extends DriverConfiguration {
     public String getKafkaBootstrapServers() {
         return kafkaBootstrapServers;
     }
+
+    @Override
+    public String toString() {
+        return "DriverUnitTestConfiguration{" +
+                "sparkCheckpointLocation='" + sparkCheckpointLocation + '\'' +
+                ", sparkCassandraConnectionHost='" + sparkCassandraConnectionHost + '\'' +
+                ", sparkCassandraConnectionPort='" + sparkCassandraConnectionPort + '\'' +
+                ", kafkaBootstrapServers='" + kafkaBootstrapServers + '\'' +
+                "} " + super.toString();
+    }
 }

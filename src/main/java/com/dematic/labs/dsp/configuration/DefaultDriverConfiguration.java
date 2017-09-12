@@ -15,4 +15,10 @@ public final class DefaultDriverConfiguration extends DriverConfiguration {
     private DefaultDriverConfiguration(final Builder builder) {
         super(builder);
     }
+
+
+    @Override
+    public String toString() {
+        return "DefaultDriverConfiguration{} " + super.toString();
+    }
 }

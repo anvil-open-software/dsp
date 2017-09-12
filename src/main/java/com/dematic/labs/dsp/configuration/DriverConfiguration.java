@@ -198,4 +198,27 @@ public abstract class DriverConfiguration implements Serializable {
     public String getCassandraKeyspace() {
         return cassandraKeyspace;
     }
+
+    @Override
+    public String toString() {
+        return "DriverConfiguration{" +
+                "driverAppName='" + driverAppName + '\'' +
+                ", sparkMaster='" + sparkMaster + '\'' +
+                ", sparkCheckpointLocation='" + sparkCheckpointLocation + '\'' +
+                ", sparkShufflePartition='" + sparkShufflePartition + '\'' +
+                ", sparkOutputMode='" + sparkOutputMode + '\'' +
+                ", sparkWatermarkTime='" + sparkWatermarkTime + '\'' +
+                ", sparkQueryTrigger='" + sparkQueryTrigger + '\'' +
+                ", sparkCassandraConnectionHost='" + sparkCassandraConnectionHost + '\'' +
+                ", sparkCassandraConnectionPort='" + sparkCassandraConnectionPort + '\'' +
+                ", sparkCassandraAuthUsername='" + sparkCassandraAuthUsername + '\'' +
+                ", sparkCassandraAuthPassword='" + sparkCassandraAuthPassword + '\'' +
+                ", kafkaBootstrapServers='" + kafkaBootstrapServers + '\'' +
+                ", kafkaTopics='" + kafkaTopics + '\'' +
+                ", kafkaSubscribe='" + kafkaSubscribe + '\'' +
+                ", kafkaStartingOffsets='" + kafkaStartingOffsets + '\'' +
+                ", kafkaMaxOffsetsPerTrigger='" + kafkaMaxOffsetsPerTrigger + '\'' +
+                ", cassandraKeyspace='" + cassandraKeyspace + '\'' +
+                '}';
+    }
 }
