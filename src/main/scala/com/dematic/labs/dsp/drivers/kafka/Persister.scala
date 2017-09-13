@@ -61,21 +61,6 @@ object Persister {
         .option("maxOffsetsPerTrigger", config.getKafkaMaxOffsetsPerTrigger)
         .load
 
-      /**
-        * /* val schema = StructType(Seq(
-        * StructField("aggregate_time", StructType(Seq(
-        * StructField("start", TimestampType, false),
-        * StructField("end", TimestampType, false)
-        * ))),
-        * StructField("opcTagId", LongType, false),
-        * StructField("count", LongType, false),
-        * StructField("avg", LongType, true),
-        * StructField("min", LongType, true),
-        * StructField("max", LongType, true),
-        * StructField("sum", LongType, true)
-        * ))*/
-        */
-
       // define the signal schema retrieve the signal values
       val schema: StructType = StructType(Seq(
         StructField("id", LongType, nullable = false),
