@@ -18,7 +18,7 @@ import org.apache.spark.sql.types.{StringType, StructField, StructType, _}
   */
 object Persister {
   // should only be  used with testing
-  private var injectedDriverConfiguration:DriverConfiguration = _
+  private var injectedDriverConfiguration: DriverConfiguration = _
 
   private[drivers] def setDriverConfiguration(driverConfiguration: DriverConfiguration) {
     injectedDriverConfiguration = driverConfiguration
@@ -26,7 +26,7 @@ object Persister {
 
   def main(args: Array[String]) {
     // driver configuration
-    val config = if(injectedDriverConfiguration == null) {
+    val config = if (injectedDriverConfiguration == null) {
       new DefaultDriverConfiguration.Builder().build
     } else {
       injectedDriverConfiguration
@@ -65,6 +65,7 @@ object Persister {
       val schema: StructType = StructType(Seq(
         StructField("id", LongType, nullable = false),
         StructField("timestamp", StringType, nullable = false),
+        StructField("signalType", StringType, nullable = false),
         StructField("value", IntegerType, nullable = false),
         StructField("producerId", StringType, nullable = true)
       ))
@@ -86,15 +87,14 @@ object Persister {
           override def process(row: Row) {
             connector.withSessionDo { session =>
               session.execute(cql(row.getAs[Long]("id"), toTimeStamp(row.getAs[String]("timestamp")),
-                row.getAs[Int]("value"), row.getAs[String]("producerId")))
+                row.getAs[String]("signalType"), row.getAs[Int]("value"), row.getAs[String]("producerId")))
             }
           }
 
           override def close(errorOrNull: Throwable) {}
 
-          def cql(id: Long, timestamp: Timestamp, value: Int, producerId: String): String =
-            s""" insert into ${config.getCassandraKeyspace}.signals (id, timestamp, value, producerId) values($id, '$timestamp', $value, '$producerId')"""
-
+          def cql(id: Long, timestamp: Timestamp, signalType: String, value: Int, producerId: String): String =
+            s""" insert into ${config.getCassandraKeyspace}.signals (id, timestamp, signalType, value, producerId) values($id, '$timestamp', '$signalType', $value, '$producerId')"""
         }).start
       persister.awaitTermination()
     } finally

@@ -28,7 +28,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
 
   val kafkaServer = new KafkaUnit
   val topicAndKeyspace = "persister"
-  val expectedNumberOfSignals = 100
+  val numberOfSignalsPerSignalId = 100
 
   before {
     // create the checkpoint dir
@@ -83,7 +83,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
             }
 
             // 2) push signal to kafka
-            new TestSignalProducer(kafkaServer.getKafkaConnect, topicAndKeyspace, expectedNumberOfSignals,
+            new TestSignalProducer(kafkaServer.getKafkaConnect, topicAndKeyspace, numberOfSignalsPerSignalId,
               List(100, 200), "persisterProducer")
 
             // 3) query cassandra until all the signals have been saved
@@ -94,7 +94,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
                 if (row != null) numberOfSignals = row.getLong("count")
                 sleep(1000)
                 // keep getting count until numberOfSignals have been persisted
-              } while (numberOfSignals != expectedNumberOfSignals)
+              } while (numberOfSignals > 0)
               numberOfSignals
             }
             // succeeded
