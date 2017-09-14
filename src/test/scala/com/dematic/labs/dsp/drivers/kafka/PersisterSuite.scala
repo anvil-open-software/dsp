@@ -3,11 +3,8 @@ package com.dematic.labs.dsp.drivers.kafka
 import java.io.InputStream
 import java.lang.Thread.sleep
 import java.nio.file.Paths
-import java.util
 import java.util.concurrent.TimeUnit
-import java.util.function.Consumer
 
-import com.datastax.driver.core.Row
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration
 import com.dematic.labs.toolkit_bigdata.simulators.TestSignalProducer
 import info.batey.kafka.unit.KafkaUnit
