@@ -3,8 +3,11 @@ package com.dematic.labs.dsp.drivers.kafka
 import java.io.InputStream
 import java.lang.Thread.sleep
 import java.nio.file.Paths
+import java.util
 import java.util.concurrent.TimeUnit
+import java.util.function.Consumer
 
+import com.datastax.driver.core.Row
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration
 import com.dematic.labs.toolkit_bigdata.simulators.TestSignalProducer
 import info.batey.kafka.unit.KafkaUnit
@@ -28,7 +31,8 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
 
   val kafkaServer = new KafkaUnit
   val topicAndKeyspace = "persister"
-  val numberOfSignalsPerSignalId = 100
+  val numberOfSignalsPerSignalId = 10
+  val expectedNumberOfSignals = 110 // numberOfSignalsPerId * numberOfIds = 11 * 10
 
   before {
     // create the checkpoint dir
@@ -84,7 +88,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
 
             // 2) push signal to kafka
             new TestSignalProducer(kafkaServer.getKafkaConnect, topicAndKeyspace, numberOfSignalsPerSignalId,
-              List(100, 200), "persisterProducer")
+              List(100, 110), "persisterProducer")
 
             // 3) query cassandra until all the signals have been saved
             val count: Future[Long] = Future {
@@ -94,7 +98,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
                 if (row != null) numberOfSignals = row.getLong("count")
                 sleep(1000)
                 // keep getting count until numberOfSignals have been persisted
-              } while (numberOfSignals > 0)
+              } while (numberOfSignals != expectedNumberOfSignals)
               numberOfSignals
             }
             // succeeded
