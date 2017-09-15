@@ -1,6 +1,5 @@
 package com.dematic.labs.dsp.drivers.kafka
 
-import com.datastax.spark.connector.cql.CassandraConnector
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.configuration.{DefaultDriverConfiguration, DriverConfiguration}
 import com.google.common.base.Strings
@@ -30,9 +29,6 @@ object Gateway {
     if (!Strings.isNullOrEmpty(config.getSparkMaster)) builder.master(config.getSparkMaster)
     builder.appName(config.getDriverAppName)
     val sparkSession: SparkSession = builder.getOrCreate
-
-    // create the cassandra connector
-    val connector: CassandraConnector = CassandraConnector.apply(sparkSession.sparkContext.getConf)
 
     // hook up Prometheus listener for monitoring
     if (sys.props.contains(MonitorConsts.SPARK_QUERY_MONITOR_PUSH_GATEWAY)) {
@@ -65,11 +61,13 @@ object Gateway {
       val signals = kafka.selectExpr("cast (value as string) as json").
         select(from_json($"json", schema).as("signals")).select("signals.*")
 
-      // write to cassandra
-      val gateway = signals.writeStream
+      val sorters = signals.select("*").where("signalType == 'Sorter'")
+
+      // write sorter signals to kafka topic :todo
+      sorters.writeStream
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
-        .queryName("gateway")
+        .queryName("sorters")
         .foreach(new ForeachWriter[Row]() {
           override def open(partitionId: Long, version: Long) = true
 
@@ -80,7 +78,28 @@ object Gateway {
           override def close(errorOrNull: Throwable) {}
 
         }).start
-      gateway.awaitTermination()
+
+      val pickers = signals.select("*").where("signalType == 'Picker'")
+      // write picker signals to kafka topic :todo
+      pickers.writeStream
+        .trigger(ProcessingTime(config.getSparkQueryTrigger))
+        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
+        .queryName("pickers")
+        .foreach(new ForeachWriter[Row]() {
+          override def open(partitionId: Long, version: Long) = true
+
+          override def process(row: Row) {
+            println(row)
+          }
+
+          override def close(errorOrNull: Throwable) {}
+
+        }).start
+      // keep alive
+      sparkSession.streams.awaitAnyTermination()
+    } catch {
+      // todo: remove
+      case e: Exception => e.printStackTrace()
     } finally
       sparkSession.close()
   }
