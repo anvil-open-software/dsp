@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration
 import com.dematic.labs.toolkit_bigdata.simulators.TestSignalProducer
+import com.dematic.labs.toolkit_bigdata.simulators.data.SignalType
 import info.batey.kafka.unit.KafkaUnit
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper._
 import org.junit.Rule
@@ -85,7 +86,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
 
             // 2) push signal to kafka
             new TestSignalProducer(kafkaServer.getKafkaConnect, topicAndKeyspace, numberOfSignalsPerSignalId,
-              List(100, 110), "persisterProducer")
+              List(100, 110), SignalType.SORTER, "persisterProducer")
 
             // 3) query cassandra until all the signals have been saved
             val count: Future[Long] = Future {

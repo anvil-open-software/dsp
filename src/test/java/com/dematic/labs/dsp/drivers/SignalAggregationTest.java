@@ -6,6 +6,7 @@ import com.datastax.driver.core.Session;
 import com.dematic.labs.dsp.configuration.DriverConfiguration;
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration;
 import com.dematic.labs.toolkit_bigdata.simulators.TestSignalProducer;
+import com.dematic.labs.toolkit_bigdata.simulators.data.SignalType;
 import com.jayway.awaitility.Awaitility;
 import info.batey.kafka.unit.KafkaUnit;
 import org.apache.spark.sql.streaming.StreamingQueryException;
@@ -108,7 +109,7 @@ public final class SignalAggregationTest {
 
             //noinspection unchecked
             new TestSignalProducer(kafkaServer.getKafkaConnect(), config.getKafkaTopics(), 100,
-                    signalIdRange, "signalAggregationProducer");
+                    signalIdRange, SignalType.PICKER(), "signalAggregationProducer");
             // 4) query cassandra until all the signals have been aggregated
             // set the defaults timeouts
             Awaitility.setDefaultTimeout(2, TimeUnit.MINUTES);
