@@ -58,7 +58,7 @@
         <dependency>
             <groupId>com.dematic.labs.toolkit_bigdata</groupId>
             <artifactId>simulators</artifactId>
-            <version>1.0.12-SNAPSHOT</version>
+            <version>1.0.13-SNAPSHOT</version>
         </dependency>
         <!-- spark sql/data frames/data sets -->
         <dependency>
@@ -164,7 +164,7 @@
         <dependency>
             <groupId>com.dematic.labs.dsp.monitor</groupId>
             <artifactId>dsp-monitor</artifactId>
-            <version>0.0.3-SNAPSHOT</version>
+            <version>0.0.3</version>
 
             <exclusions>
                 <exclusion>
