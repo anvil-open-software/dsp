@@ -109,8 +109,6 @@
         </dependency>
 
         <!-- utilities -->
-
-        <!-- json dependencies -->
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
@@ -118,6 +116,12 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.monix</groupId>
+            <artifactId>monix_2.11</artifactId>
+            <version>2.3.0</version>
+            <type>pom</type>
         </dependency>
 
         <!-- logging -->
@@ -243,6 +247,8 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.0.0</version>
                 <executions>
+
+
                     <!-- Run shade goal on package phase -->
                     <execution>
                         <goals>
@@ -275,6 +281,9 @@
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                         </configuration>
                     </execution>
+                    <!-- todo: build simulators -->
+
+
                 </executions>
             </plugin>
 
