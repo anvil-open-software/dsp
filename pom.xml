@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.dematic.labs</groupId>
@@ -39,14 +40,14 @@
             </dependency>
         </dependencies>
 
-      </dependencyManagement>
+    </dependencyManagement>
 
     <dependencies>
         <!-- scala dependencies -->
-            <dependency>
-                <groupId>org.scala-lang</groupId>
-                <artifactId>scala-library</artifactId>
-                <version>${scala.major.minor.version}</version>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>${scala.major.minor.version}</version>
         </dependency>
         <!-- supports compatibility between java 8 and scala, most issues fixed in scala 2.12.x -->
         <dependency>
@@ -247,23 +248,19 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.0.0</version>
                 <executions>
-
-
-                    <!-- Run shade goal on package phase -->
+                    <!-- Drivers -->
                     <execution>
+                        <id>drivers</id>
                         <goals>
                             <goal>shade</goal>
                         </goals>
                         <phase>package</phase>
                         <configuration>
+                            <outputFile>target/${project.artifactId}-driver-${project.version}.jar</outputFile>
                             <artifactSet>
                                 <excludes>
-                                    <!-- Also exclude very big transitive dependencies
-
-                                    WARNING: You have to remove these excludes if your code relies on other
-                                    versions of these dependencies.
-
-                                    -->
+                                    <exclude>junit:junit</exclude>
+                                    <excude>com/dematic/labs/dsp/simulators/**</excude>
                                 </excludes>
                             </artifactSet>
                             <filters>
@@ -281,12 +278,39 @@
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                         </configuration>
                     </execution>
-                    <!-- todo: build simulators -->
-
+                    <!-- simulators -->
+                    <execution>
+                        <id>simulators</id>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <phase>package</phase>
+                        <configuration>
+                            <outputFile>target/${project.artifactId}-simulators-${project.version}.jar</outputFile>
+                            <artifactSet>
+                                <excludes>
+                                    <exclude>junit:junit</exclude>
+                                    <exclude>com/dematic/labs/dsp/drivers/**</exclude>
+                                </excludes>
+                            </artifactSet>
+                            <filters>
+                                <filter>
+                                    <!-- Do not copy the signatures in the META-INF folder.
+                                    Otherwise, this might cause SecurityExceptions when using the JAR. -->
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                        </configuration>
+                    </execution>
 
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
