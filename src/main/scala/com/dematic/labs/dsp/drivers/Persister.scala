@@ -1,11 +1,11 @@
-package com.dematic.labs.dsp.drivers.kafka
+package com.dematic.labs.dsp.drivers
 
 import java.sql.Timestamp
-import java.text.{DateFormat, SimpleDateFormat}
 
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.configuration.{DefaultDriverConfiguration, DriverConfiguration}
+import com.dematic.labs.dsp.data.Utils.toTimeStamp
 import com.google.common.base.Strings
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
@@ -99,21 +99,5 @@ object Persister {
       persister.awaitTermination()
     } finally
       sparkSession.close()
-  }
-
-  // todo: unify timestamps between cassandra and spark/sparks ql
-  def toTimeStamp(timeStr: String): Timestamp = {
-    val dateFormat1: DateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-    val dateFormat2: DateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss")
-
-    val date: Option[Timestamp] = {
-      try {
-        Some(new Timestamp(dateFormat1.parse(timeStr).getTime))
-      } catch {
-        case e: java.text.ParseException =>
-          Some(new Timestamp(dateFormat2.parse(timeStr).getTime))
-      }
-    }
-    date.getOrElse(Timestamp.valueOf(timeStr))
   }
 }

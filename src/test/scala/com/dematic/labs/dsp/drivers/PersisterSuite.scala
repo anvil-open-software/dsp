@@ -1,4 +1,4 @@
-package com.dematic.labs.dsp.drivers.kafka
+package com.dematic.labs.dsp.drivers
 
 import java.io.InputStream
 import java.lang.Thread.sleep
@@ -6,8 +6,8 @@ import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration
-import com.dematic.labs.toolkit_bigdata.simulators.TestSignalProducer
-import com.dematic.labs.toolkit_bigdata.simulators.data.SignalType
+import com.dematic.labs.dsp.data.SignalType
+import com.dematic.labs.dsp.simulators.TestSignalProducer
 import info.batey.kafka.unit.KafkaUnit
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper._
 import org.junit.Rule
