@@ -1,4 +1,4 @@
-package com.dematic.labs.dsp.drivers.kafka
+package com.dematic.labs.dsp.drivers
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.configuration.DefaultDriverConfiguration

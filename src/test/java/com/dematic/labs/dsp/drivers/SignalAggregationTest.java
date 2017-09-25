@@ -5,7 +5,8 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.dematic.labs.dsp.configuration.DriverConfiguration;
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration;
-import com.dematic.labs.toolkit_bigdata.simulators.diagnostics.SignalUtils;
+import com.dematic.labs.dsp.data.SignalType;
+import com.dematic.labs.dsp.simulators.TestSignalProducer;
 import com.jayway.awaitility.Awaitility;
 import info.batey.kafka.unit.KafkaUnit;
 import org.apache.spark.sql.streaming.StreamingQueryException;
@@ -14,12 +15,16 @@ import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.collection.JavaConverters;
+import scala.collection.Seq;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -96,9 +101,15 @@ public final class SignalAggregationTest {
                 }
             });
 
-            // 3) push signal to kafka
-            new SignalUtils(kafkaServer.getKafkaConnect(), config.getKafkaTopics(), 500,
-                    "signalAggregationProducer");
+            final List<Object> ranges = new ArrayList<>();
+            ranges.add(100);
+            ranges.add(200);
+
+            final Seq<Object> signalIdRange = JavaConverters.collectionAsScalaIterableConverter(ranges).asScala().toSeq();
+
+            //noinspection unchecked
+            new TestSignalProducer(kafkaServer.getKafkaConnect(), config.getKafkaTopics(), 100,
+                    signalIdRange, SignalType.PICKER(), "signalAggregationProducer");
             // 4) query cassandra until all the signals have been aggregated
             // set the defaults timeouts
             Awaitility.setDefaultTimeout(2, TimeUnit.MINUTES);
