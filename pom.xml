@@ -256,7 +256,7 @@
                         </goals>
                         <phase>package</phase>
                         <configuration>
-                            <outputFile>target/${project.artifactId}-driver-${project.version}.jar</outputFile>
+                            <outputFile>target/${project.artifactId}-driver.jar</outputFile>
                             <artifactSet>
                                 <excludes>
                                     <exclude>junit:junit</exclude>
@@ -286,7 +286,7 @@
                         </goals>
                         <phase>package</phase>
                         <configuration>
-                            <outputFile>target/${project.artifactId}-simulators-${project.version}.jar</outputFile>
+                            <outputFile>target/${project.artifactId}-simulators.jar</outputFile>
                             <artifactSet>
                                 <excludes>
                                     <exclude>junit:junit</exclude>
