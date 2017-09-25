@@ -15,7 +15,7 @@ class ProducerConfigurationSuite extends FunSuite {
     assert(3 === config.getDurationInMinutes)
     assert("localhost:9092" === config.getBootstrapServers)
     assert("throughput" === config.getTopics)
-    assert(10 === config.getRetries)
+    assert(5 === config.getRetries)
     // from reference.conf
     assert("org.apache.kafka.common.serialization.StringSerializer" === config.getKeySerializer)
     assert("org.apache.kafka.common.serialization.StringSerializer" === config.getValueSerializer)
