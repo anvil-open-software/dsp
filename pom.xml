@@ -257,18 +257,14 @@
                         <phase>package</phase>
                         <configuration>
                             <outputFile>target/${project.artifactId}-driver.jar</outputFile>
-                            <artifactSet>
-                                <excludes>
-                                    <exclude>junit:junit</exclude>
-                                    <excude>com/dematic/labs/dsp/simulators/**</excude>
-                                </excludes>
-                            </artifactSet>
                             <filters>
                                 <filter>
                                     <!-- Do not copy the signatures in the META-INF folder.
                                     Otherwise, this might cause SecurityExceptions when using the JAR. -->
                                     <artifact>*:*</artifact>
                                     <excludes>
+                                        <exclude>junit:junit</exclude>
+                                        <excude>com/dematic/labs/dsp/simulators/**</excude>
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
@@ -287,18 +283,18 @@
                         <phase>package</phase>
                         <configuration>
                             <outputFile>target/${project.artifactId}-simulators.jar</outputFile>
-                            <artifactSet>
-                                <excludes>
-                                    <exclude>junit:junit</exclude>
-                                    <exclude>com/dematic/labs/dsp/drivers/**</exclude>
-                                </excludes>
-                            </artifactSet>
                             <filters>
                                 <filter>
                                     <!-- Do not copy the signatures in the META-INF folder.
                                     Otherwise, this might cause SecurityExceptions when using the JAR. -->
                                     <artifact>*:*</artifact>
                                     <excludes>
+                                        <exclude>junit:junit</exclude>
+                                        <exclude>com/dematic/labs/dsp/drivers/**</exclude>
+                                        <exclude>org/apache/spark/**</exclude>
+                                        <exclude>org/spark_project/**</exclude>
+                                        <exclude>org/apache/hadoop/**</exclude>
+                                        <exclude>com/datastax/**</exclude>
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
