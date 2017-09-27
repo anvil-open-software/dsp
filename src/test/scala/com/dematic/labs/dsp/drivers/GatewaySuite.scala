@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration
-import com.dematic.labs.dsp.data.SignalType
+import com.dematic.labs.dsp.data.SignalType.{DMS, PICKER, SORTER}
 import com.dematic.labs.dsp.simulators.TestSignalProducer
 import com.jayway.awaitility.Awaitility
 import info.batey.kafka.unit.KafkaUnit
@@ -39,14 +39,21 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
 
     logger.info(s"kafka server = '${kafkaServer.getKafkaConnect}'")
 
-    // 3) configure the driver
-    val uri = getClass.getResource("/gateway.conf").toURI
-    val config = new DriverUnitTestConfiguration.Builder(Paths.get(uri).toFile)
+    // 3) configure the drivers
+    val gateway = new DriverUnitTestConfiguration.Builder(Paths.get(getClass.getResource("/gateway.conf").toURI).toFile)
       .sparkCheckpointLocation(checkpoint.getRoot.getPath)
       .kafkaBootstrapServer(kafkaServer.getKafkaConnect)
       .build
     // set the configuration
-    Gateway.setDriverConfiguration(config)
+    Gateway.setDriverConfiguration(gateway)
+
+    val gatewayConsumer =
+      new DriverUnitTestConfiguration.Builder(Paths.get(getClass.getResource("/gatewayConsumer.conf").toURI).toFile)
+        .sparkCheckpointLocation(checkpoint.getRoot.getPath)
+        .kafkaBootstrapServer(kafkaServer.getKafkaConnect)
+        .build
+    // set the configuration
+    GatewayConsumer.setDriverConfiguration(gatewayConsumer)
   }
 
   after {
@@ -56,28 +63,33 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
   test("complete DSP Gateway test, push signals to kafka, Spark consumes and orders by signalType and saves to other " +
     "Kafka topics") {
 
-    // 1) start the driver asynchronously
+    // 1) start the drivers asynchronously
     Future {
       // start the driver
       Gateway.main(Array[String]())
     }
 
+    Future {
+      // start the driver
+      GatewayConsumer.main(Array[String]())
+    }
+
     // 2) push sorter signals to kafka
     Future {
       new TestSignalProducer(kafkaServer.getKafkaConnect, "gateway", numberOfSignalsPerSignalId,
-        List(100, 110), SignalType.SORTER, "gatewayProducer")
+        List(100, 110), SORTER, "gatewayProducer")
     }
 
     // 3) push picker signals to kafka
     Future {
       new TestSignalProducer(kafkaServer.getKafkaConnect, "gateway", numberOfSignalsPerSignalId,
-        List(120, 130), SignalType.PICKER, "gatewayProducer")
+        List(120, 130), PICKER, "gatewayProducer")
     }
 
     // 3) push dms signals to kafka
     Future {
       new TestSignalProducer(kafkaServer.getKafkaConnect, "gateway", numberOfSignalsPerSignalId,
-        List(100, 110), SignalType.DMS, "gatewayProducer")
+        List(140, 150), DMS, "gatewayProducer")
     }
 
 

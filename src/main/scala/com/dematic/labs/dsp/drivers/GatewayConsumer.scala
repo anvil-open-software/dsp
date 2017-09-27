@@ -5,9 +5,10 @@ import com.dematic.labs.dsp.configuration.{DefaultDriverConfiguration, DriverCon
 import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.from_json
+import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.types._
 
-object Gateway {
+object GatewayConsumer {
   // should only be  used with testing
   private var injectedDriverConfiguration: DriverConfiguration = _
 
@@ -58,39 +59,21 @@ object Gateway {
 
       // convert to json and select all values
       val signals = kafka.selectExpr("cast (value as string) as json").
-        select(from_json($"json", schema).as("signals")).select("signals.*").
-        dropDuplicates("id", "timestamp", "signalType")
+        select(from_json($"json", schema).as("signals")).select("signals.*")
 
-      val sorters = signals.select("*").where("signalType == 'Sorter'")
-
-      sorters.selectExpr("CAST(value AS STRING)").writeStream
-        .format("kafka")
-        .queryName("sorter")
-        .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
-        .option("topic", "sorter")
-        .option("checkpointLocation", config.getSparkCheckpointLocation + "/sorter")
+      //2) write count to an output sink
+      val query = signals.writeStream
+        .format("console")
+        .trigger(ProcessingTime(config.getSparkQueryTrigger))
+        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
+        .queryName("gatewayConsumer")
+        .outputMode(config.getSparkOutputMode)
         .start
 
-      val pickers = signals.select("*").where("signalType == 'Picker'")
-
-      pickers.selectExpr("CAST(value AS STRING)").writeStream
-        .format("kafka")
-        .queryName("picker")
-        .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
-        .option("topic", "pickers")
-        .option("checkpointLocation", config.getSparkCheckpointLocation + "/picker")
-        .start
-
-      pickers.selectExpr("CAST(value AS STRING)").writeStream
-        .format("kafka")
-        .queryName("dms")
-        .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
-        .option("topic", "dms")
-        .option("checkpointLocation", config.getSparkCheckpointLocation + "/dms")
-        .start
       // keep alive
       sparkSession.streams.awaitAnyTermination
-    } finally
+    } finally {
       sparkSession.close
+    }
   }
 }
