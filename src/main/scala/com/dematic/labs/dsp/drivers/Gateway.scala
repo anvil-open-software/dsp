@@ -58,7 +58,8 @@ object Gateway {
 
       // convert to json and select all values
       val signals = kafka.selectExpr("cast (value as string) as json").
-        select(from_json($"json", schema).as("signals")).select("signals.*")
+        select(from_json($"json", schema).as("signals")).select("signals.*").
+        dropDuplicates("id", "timestamp", "signalType")
 
       val sorters = signals.select("*").where("signalType == 'Sorter'")
 

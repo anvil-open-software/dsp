@@ -1,13 +1,21 @@
 package com.dematic.labs.dsp.drivers
 
 import java.nio.file.Paths
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration
+import com.dematic.labs.dsp.data.SignalType
+import com.dematic.labs.dsp.simulators.TestSignalProducer
+import com.jayway.awaitility.Awaitility
 import info.batey.kafka.unit.KafkaUnit
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
 import org.scalatest.{BeforeAndAfter, FunSuite}
 import org.slf4j.{Logger, LoggerFactory}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class GatewaySuite extends FunSuite with BeforeAndAfter {
   val logger: Logger = LoggerFactory.getLogger("GatewaySuite")
@@ -27,6 +35,7 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
     kafkaServer.createTopic("gateway", 1)
     kafkaServer.createTopic("sorter", 1)
     kafkaServer.createTopic("picker", 1)
+    kafkaServer.createTopic("dms", 1)
 
     logger.info(s"kafka server = '${kafkaServer.getKafkaConnect}'")
 
@@ -47,7 +56,7 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
   test("complete DSP Gateway test, push signals to kafka, Spark consumes and orders by signalType and saves to other " +
     "Kafka topics") {
 
-  /*  // 1) start the driver asynchronously
+    // 1) start the driver asynchronously
     Future {
       // start the driver
       Gateway.main(Array[String]())
@@ -59,14 +68,19 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
         List(100, 110), SignalType.SORTER, "gatewayProducer")
     }
 
-    // 2) push picker signals to kafka
+    // 3) push picker signals to kafka
     Future {
       new TestSignalProducer(kafkaServer.getKafkaConnect, "gateway", numberOfSignalsPerSignalId,
-        List(120, 130), SignalType.SORTER, "gatewayProducer")
+        List(120, 130), SignalType.PICKER, "gatewayProducer")
+    }
+
+    // 3) push dms signals to kafka
+    Future {
+      new TestSignalProducer(kafkaServer.getKafkaConnect, "gateway", numberOfSignalsPerSignalId,
+        List(100, 110), SignalType.DMS, "gatewayProducer")
     }
 
 
     Awaitility.waitAtMost(5, TimeUnit.MINUTES).untilTrue(new AtomicBoolean(false))
-    print()*/
   }
 }
