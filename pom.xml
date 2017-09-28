@@ -164,6 +164,11 @@
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility-scala</artifactId>
+            <version>2.0.0</version>
+        </dependency>
 
         <!-- prometheus monitoring -->
         <dependency>
@@ -256,7 +261,9 @@
                         </goals>
                         <phase>package</phase>
                         <configuration>
-                            <outputFile>target/${project.artifactId}-driver.jar</outputFile>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>driver</shadedClassifierName>
+                            <!--<outputFile>target/${project.artifactId}-driver.jar</outputFile>-->
                             <filters>
                                 <filter>
                                     <!-- Do not copy the signatures in the META-INF folder.
@@ -282,7 +289,9 @@
                         </goals>
                         <phase>package</phase>
                         <configuration>
-                            <outputFile>target/${project.artifactId}-simulators.jar</outputFile>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>simulators</shadedClassifierName>
+                            <!--<outputFile>target/${project.artifactId}-simulators.jar</outputFile>-->
                             <filters>
                                 <filter>
                                     <!-- Do not copy the signatures in the META-INF folder.

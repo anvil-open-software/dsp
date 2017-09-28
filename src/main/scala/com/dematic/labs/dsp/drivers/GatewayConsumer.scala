@@ -61,8 +61,8 @@ object GatewayConsumer {
         select(from_json($"json", schema).as("signals")).select("signals.*")
 
       //2) just write to the console
-      val query = signals.writeStream
-        .format("console")
+      signals.writeStream
+        .format("memory")
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation + "/gatewayconsumer")
         .queryName("gatewayConsumer")

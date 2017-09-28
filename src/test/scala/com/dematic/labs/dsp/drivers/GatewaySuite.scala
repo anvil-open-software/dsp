@@ -1,14 +1,16 @@
 package com.dematic.labs.dsp.drivers
 
+import java.lang
 import java.nio.file.Paths
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.{Callable, TimeUnit}
+import java.util.{Collections, Properties}
 
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration
 import com.dematic.labs.dsp.data.SignalType.{DMS, PICKER, SORTER}
 import com.dematic.labs.dsp.simulators.TestSignalProducer
-import com.jayway.awaitility.Awaitility
 import info.batey.kafka.unit.KafkaUnit
+import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
+import org.awaitility.Awaitility._
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
 import org.scalatest.{BeforeAndAfter, FunSuite}
@@ -32,6 +34,7 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
     // 1) start kafka server and create topic, only one broker created during testing
     kafkaServer.setKafkaBrokerConfig("offsets.topic.replication.factor", "1")
     kafkaServer.startup()
+    // create all topics
     kafkaServer.createTopic("gateway", 1)
     kafkaServer.createTopic("sorter", 1)
     kafkaServer.createTopic("picker", 1)
@@ -61,18 +64,19 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
   }
 
   test("complete DSP Gateway test, push signals to kafka, Spark consumes and orders by signalType and saves to other " +
-    "Kafka topics") {
+    "Kafka topics, GatewayConsumer will consume from all the signalType topics") {
 
     // 1) start the drivers asynchronously
     Future {
       // start the driver
       Gateway.main(Array[String]())
     }
-
     Future {
       // start the driver
       GatewayConsumer.main(Array[String]())
     }
+
+    // total signals per Id and type = 3300, total by forwarded topic = 1100
 
     // 2) push sorter signals to kafka
     Future {
@@ -92,7 +96,32 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
         List(140, 150), DMS, "gatewayProducer")
     }
 
+    // create a kafka consumer and ensure all signals by type have been forwarded to all topics
+    val props = new Properties
+    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaServer.getKafkaConnect)
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer")
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer")
+    props.put(ConsumerConfig.GROUP_ID_CONFIG, "gateway_suite")
+    props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true")
+    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+    val kc: KafkaConsumer[String, String] = new KafkaConsumer[String, String](props)
 
-    Awaitility.waitAtMost(5, TimeUnit.MINUTES).untilTrue(new AtomicBoolean(false))
+    // validate all messages were forwarded to topic
+    validateSignalCountByTopic(kc, "sorter", 1100)
+    validateSignalCountByTopic(kc, "picker", 1100)
+    validateSignalCountByTopic(kc, "dms", 1100)
+  }
+
+  private def validateSignalCountByTopic(kc: KafkaConsumer[String, String], topic: String, signalsPerTopic: Int) {
+    // Subscribe to the topic.
+    kc.subscribe(Collections.singletonList(topic))
+    // keep polling until signal count is complete
+    var count = 0
+    await().atMost(2, TimeUnit.MINUTES).until(new Callable[lang.Boolean] {
+      override def call(): lang.Boolean = {
+        count = count + kc.poll(1000).count()
+        count == signalsPerTopic
+      }
+    })
   }
 }
