@@ -64,7 +64,7 @@ object GatewayConsumer {
       signals.writeStream
         .format("memory")
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
-        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation + "/gatewayconsumer")
+        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
         .queryName("gatewayConsumer")
         .outputMode(config.getSparkOutputMode)
         .start

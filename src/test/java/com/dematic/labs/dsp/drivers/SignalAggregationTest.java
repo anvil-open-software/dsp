@@ -58,7 +58,7 @@ public final class SignalAggregationTest {
 
         final URI uri = getClass().getResource("/signalAggregation.conf").toURI();
         final DriverUnitTestConfiguration.Builder builder = new DriverUnitTestConfiguration.Builder(Paths.get(uri).toFile());
-        config = builder.sparkCheckpointLocation(checkpoint.getRoot().getPath())
+        config = builder.sparkCheckpointLocation(checkpoint.getRoot().getPath() + "/signalaggregation")
                 .sparkCassandraConnectionHost("localhost")
                 .sparkCassandraConnectionPort(Integer.toString(getNativeTransportPort()))
                 .kafkaBootstrapServer(kafkaServer.getKafkaConnect())

@@ -46,7 +46,7 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
     // 3) configure the driver
     val uri = getClass.getResource("/persister.conf").toURI
     val config = new DriverUnitTestConfiguration.Builder(Paths.get(uri).toFile)
-      .sparkCheckpointLocation(checkpoint.getRoot.getPath)
+      .sparkCheckpointLocation(checkpoint.getRoot.getPath + "/persister")
       .kafkaBootstrapServer(kafkaServer.getKafkaConnect)
       .sparkCassandraConnectionHost("localhost")
       .sparkCassandraConnectionPort(getNativeTransportPort.toString)

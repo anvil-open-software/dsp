@@ -44,7 +44,7 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
 
     // 3) configure the drivers
     val gateway = new DriverUnitTestConfiguration.Builder(Paths.get(getClass.getResource("/gateway.conf").toURI).toFile)
-      .sparkCheckpointLocation(checkpoint.getRoot.getPath)
+      .sparkCheckpointLocation(checkpoint.getRoot.getPath + "/gateway")
       .kafkaBootstrapServer(kafkaServer.getKafkaConnect)
       .build
     // set the configuration
@@ -52,7 +52,7 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
 
     val gatewayConsumer =
       new DriverUnitTestConfiguration.Builder(Paths.get(getClass.getResource("/gatewayConsumer.conf").toURI).toFile)
-        .sparkCheckpointLocation(checkpoint.getRoot.getPath)
+        .sparkCheckpointLocation(checkpoint.getRoot.getPath + "/gatewayconsumer")
         .kafkaBootstrapServer(kafkaServer.getKafkaConnect)
         .build
     // set the configuration
