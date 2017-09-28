@@ -43,7 +43,6 @@ object GatewayConsumer {
         .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
         .option(config.getKafkaSubscribe, config.getKafkaTopics)
         .option("startingOffsets", config.getKafkaStartingOffsets)
-        .option("maxOffsetsPerTrigger", config.getKafkaMaxOffsetsPerTrigger)
         .load
 
       // define the signal schema retrieve the signal values
@@ -61,11 +60,11 @@ object GatewayConsumer {
       val signals = kafka.selectExpr("cast (value as string) as json").
         select(from_json($"json", schema).as("signals")).select("signals.*")
 
-      //2) write count to an output sink
+      //2) just write to the console
       val query = signals.writeStream
         .format("console")
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
-        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
+        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation + "/gatewayconsumer")
         .queryName("gatewayConsumer")
         .outputMode(config.getSparkOutputMode)
         .start

@@ -61,7 +61,7 @@ object Gateway {
         select(from_json($"json", schema).as("signals")).select("signals.*").
         dropDuplicates("id", "timestamp", "signalType")
 
-      val sorters = signals.select("*").where("signalType == 'Sorter'")
+      val sorters = signals.select("*").where("signalType == 'SORTER'")
 
       sorters.selectExpr("CAST(value AS STRING)").writeStream
         .format("kafka")
@@ -71,17 +71,19 @@ object Gateway {
         .option("checkpointLocation", config.getSparkCheckpointLocation + "/sorter")
         .start
 
-      val pickers = signals.select("*").where("signalType == 'Picker'")
+      val pickers = signals.select("*").where("signalType == 'PICKER'")
 
       pickers.selectExpr("CAST(value AS STRING)").writeStream
         .format("kafka")
         .queryName("picker")
         .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
-        .option("topic", "pickers")
+        .option("topic", "picker")
         .option("checkpointLocation", config.getSparkCheckpointLocation + "/picker")
         .start
 
-      pickers.selectExpr("CAST(value AS STRING)").writeStream
+      val dms = signals.select("*").where("signalType == 'DMS'")
+
+      dms.selectExpr("CAST(value AS STRING)").writeStream
         .format("kafka")
         .queryName("dms")
         .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
