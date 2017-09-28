@@ -93,11 +93,6 @@
             <groupId>com.datastax.spark</groupId>
             <artifactId>spark-cassandra-connector_2.11</artifactId>
         </dependency>
-        <!-- cassandra client utils -->
-        <dependency>
-            <groupId>org.apache.cassandra</groupId>
-            <artifactId>cassandra-clientutil</artifactId>
-        </dependency>
         <!-- cassandra client driver for java apps -->
         <dependency>
             <groupId>com.datastax.cassandra</groupId>

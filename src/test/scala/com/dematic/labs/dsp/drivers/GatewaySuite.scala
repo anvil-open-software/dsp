@@ -67,49 +67,55 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
     "Kafka topics, GatewayConsumer will consume from all the signalType topics") {
 
     // 1) start the drivers asynchronously
-    Future {
-      // start the driver
-      Gateway.main(Array[String]())
-    }
-    Future {
-      // start the driver
-      GatewayConsumer.main(Array[String]())
+    {
+      Future {
+        // start the driver
+        Gateway.main(Array[String]())
+      }
+      Future {
+        // start the driver
+        GatewayConsumer.main(Array[String]())
+      }
     }
 
     // total signals per Id and type = 3300, total by forwarded topic = 1100
 
     // 2) push sorter signals to kafka
-    Future {
-      new TestSignalProducer(kafkaServer.getKafkaConnect, "gateway", numberOfSignalsPerSignalId,
-        List(100, 110), SORTER, "gatewayProducer")
+    {
+      Future {
+        new TestSignalProducer(kafkaServer.getKafkaConnect, "gateway", numberOfSignalsPerSignalId,
+          List(100, 110), SORTER, "gatewayProducer")
+      }
+
+      // 3) push picker signals to kafka
+      Future {
+        new TestSignalProducer(kafkaServer.getKafkaConnect, "gateway", numberOfSignalsPerSignalId,
+          List(120, 130), PICKER, "gatewayProducer")
+      }
+
+      // 3) push dms signals to kafka
+      Future {
+        new TestSignalProducer(kafkaServer.getKafkaConnect, "gateway", numberOfSignalsPerSignalId,
+          List(140, 150), DMS, "gatewayProducer")
+      }
     }
 
-    // 3) push picker signals to kafka
-    Future {
-      new TestSignalProducer(kafkaServer.getKafkaConnect, "gateway", numberOfSignalsPerSignalId,
-        List(120, 130), PICKER, "gatewayProducer")
+    // 3) create a kafka consumer and ensure all signals by type have been forwarded to all topics
+    {
+      val props = new Properties
+      props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaServer.getKafkaConnect)
+      props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer")
+      props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer")
+      props.put(ConsumerConfig.GROUP_ID_CONFIG, "gateway_suite")
+      props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true")
+      props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+      val kc: KafkaConsumer[String, String] = new KafkaConsumer[String, String](props)
+
+      // validate all messages were forwarded to topic
+      validateSignalCountByTopic(kc, "sorter", 1100)
+      validateSignalCountByTopic(kc, "picker", 1100)
+      validateSignalCountByTopic(kc, "dms", 1100)
     }
-
-    // 3) push dms signals to kafka
-    Future {
-      new TestSignalProducer(kafkaServer.getKafkaConnect, "gateway", numberOfSignalsPerSignalId,
-        List(140, 150), DMS, "gatewayProducer")
-    }
-
-    // create a kafka consumer and ensure all signals by type have been forwarded to all topics
-    val props = new Properties
-    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaServer.getKafkaConnect)
-    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer")
-    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer")
-    props.put(ConsumerConfig.GROUP_ID_CONFIG, "gateway_suite")
-    props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true")
-    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-    val kc: KafkaConsumer[String, String] = new KafkaConsumer[String, String](props)
-
-    // validate all messages were forwarded to topic
-    validateSignalCountByTopic(kc, "sorter", 1100)
-    validateSignalCountByTopic(kc, "picker", 1100)
-    validateSignalCountByTopic(kc, "dms", 1100)
   }
 
   private def validateSignalCountByTopic(kc: KafkaConsumer[String, String], topic: String, signalsPerTopic: Int) {

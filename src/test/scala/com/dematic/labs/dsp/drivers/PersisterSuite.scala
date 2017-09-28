@@ -9,6 +9,7 @@ import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration
 import com.dematic.labs.dsp.data.SignalType
 import com.dematic.labs.dsp.simulators.TestSignalProducer
 import info.batey.kafka.unit.KafkaUnit
+import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper._
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
@@ -56,68 +57,67 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
   }
 
   after {
-    kafkaServer.shutdown()
+    try {
+      kafkaServer.shutdown()
+    }
+    try {
+      cleanEmbeddedCassandra()
+    }
+
+   // EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
+
   }
 
   test("complete DSP Persister test, push signals to kafka, spark consumes and persist to cassandra") {
-    // create a cassandra cluster and connect and create keyspace and table
-    // will close cluster
-    using(getCluster) {
-      cluster => {
-        // will close session
-        using(cluster.connect) {
-          session => {
-            session.execute(s"CREATE KEYSPACE if not exists $topicAndKeyspace WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };")
-            // ensure keyspace was created
-            assert(cluster.getMetadata.getKeyspace(topicAndKeyspace).getName === topicAndKeyspace)
-            // move to keyspace
-            session.execute(s"USE $topicAndKeyspace;")
-            // create table from cql
-            val stream: InputStream = getClass.getResourceAsStream("/persister.cql")
-            for (line <- Source.fromInputStream(stream).getLines) {
-              if (!line.startsWith("//")) session.execute(line)
-            }
+    val session = EmbeddedCassandraServerHelper.getSession
 
-            // 1) start the driver asynchronously
-            Future {
-              // start the driver
-              Persister.main(Array[String]())
-            }
-
-            // 2) push signal to kafka
-            new TestSignalProducer(kafkaServer.getKafkaConnect, topicAndKeyspace, numberOfSignalsPerSignalId,
-              List(100, 110), SignalType.SORTER, "persisterProducer")
-
-            // 3) query cassandra until all the signals have been saved
-            val count: Future[Long] = Future {
-              var numberOfSignals = 0L
-              do {
-                val row = session.execute("select count(*) from signals;").one()
-                if (row != null) numberOfSignals = row.getLong("count")
-                sleep(1000)
-                // keep getting count until numberOfSignals have been persisted
-              } while (numberOfSignals != expectedNumberOfSignals)
-              numberOfSignals
-            }
-            // succeeded
-            count.onComplete({
-              case Success(numberOfSignals) => logger.info(s"all signals '$numberOfSignals' found")
-              case Failure(exception) => logger.error("unexpected error querying cassandra", exception)
-            })
-            // wait until we get a success, waiting 1 minute
-            Await.ready(count, Duration.create(2, TimeUnit.MINUTES))
-          }
-        }
+    // 1) create a cassandra cluster and connect and create keyspace and table
+    {
+      session.execute(s"CREATE KEYSPACE if not exists $topicAndKeyspace WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };")
+      // ensure keyspace was created
+      assert(EmbeddedCassandraServerHelper.getCluster.getMetadata.getKeyspace(topicAndKeyspace).getName === topicAndKeyspace)
+      // move to keyspace
+      session.execute(s"USE $topicAndKeyspace;")
+      // create table from cql
+      val stream: InputStream = getClass.getResourceAsStream("/persister.cql")
+      for (line <- Source.fromInputStream(stream).getLines) {
+        if (!line.startsWith("//")) session.execute(line)
       }
     }
-  }
 
-  // Automatically close the resource
-  def using[A <: {def close() : Unit}, B](resource: A)(f: A => B): B =
-    try {
-      f(resource)
-    } finally {
-      resource.close()
-      logger.info(s"closed $resource")
+    // 2) start the driver asynchronously
+    {
+      Future {
+        // start the driver
+        Persister.main(Array[String]())
+      }
     }
+
+    // 3) push signal to kafka
+    {
+      new TestSignalProducer(kafkaServer.getKafkaConnect, topicAndKeyspace, numberOfSignalsPerSignalId,
+        List(100, 110), SignalType.SORTER, "persisterProducer")
+    }
+
+    // 4) query cassandra until all the signals have been saved
+    {
+      val count: Future[Long] = Future {
+        var numberOfSignals = 0L
+        do {
+          val row = session.execute("select count(*) from signals;").one()
+          if (row != null) numberOfSignals = row.getLong("count")
+          sleep(1000)
+          // keep getting count until numberOfSignals have been persisted
+        } while (numberOfSignals != expectedNumberOfSignals)
+        numberOfSignals
+      }
+      // succeeded
+      count.onComplete({
+        case Success(numberOfSignals) => logger.info(s"all signals '$numberOfSignals' found")
+        case Failure(exception) => logger.error("unexpected error querying cassandra", exception)
+      })
+      // wait until we get a success, waiting 2 minute
+      Await.ready(count, Duration.create(2, TimeUnit.MINUTES))
+    }
+  }
 }
