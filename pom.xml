@@ -229,6 +229,10 @@
                 <version>1.0</version>
                 <configuration>
                     <parallel>false</parallel>
+                    <systemProperties>
+                        <spark.driver.allowMultipleContexts>true</spark.driver.allowMultipleContexts>
+                        <spark.streaming.stopGracefullyOnShutdown>true</spark.streaming.stopGracefullyOnShutdown>
+                    </systemProperties>
                 </configuration>
                 <executions>
                     <execution>

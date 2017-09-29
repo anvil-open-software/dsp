@@ -96,8 +96,8 @@ object Persister {
           def cql(id: Long, timestamp: Timestamp, signalType: String, value: Int, producerId: String): String =
             s""" insert into ${config.getCassandraKeyspace}.signals (id, timestamp, signalType, value, producerId) values($id, '$timestamp', '$signalType', $value, '$producerId')"""
         }).start
-      persister.awaitTermination()
+      persister.awaitTermination
     } finally
-      sparkSession.close()
+      sparkSession.close
   }
 }

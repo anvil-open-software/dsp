@@ -3,10 +3,10 @@ package com.dematic.labs.dsp.drivers
 import java.io.InputStream
 import java.lang.Thread.sleep
 import java.nio.file.Paths
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{Executors, TimeUnit}
 
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration
-import com.dematic.labs.dsp.data.SignalType
+import com.dematic.labs.dsp.data.SignalType.SORTER
 import com.dematic.labs.dsp.simulators.TestSignalProducer
 import info.batey.kafka.unit.KafkaUnit
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
@@ -28,10 +28,11 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
 
   @Rule var checkpoint = new TemporaryFolder
 
-  val kafkaServer = new KafkaUnit
-  val topicAndKeyspace = "persister"
-  val numberOfSignalsPerSignalId = 10
-  val expectedNumberOfSignals = 110 // numberOfSignalsPerId * numberOfIds = 11 * 10
+  private val kafkaServer = new KafkaUnit
+  private val topicAndKeyspace = "persister"
+  private val numberOfSignalsPerSignalId = 10
+  private val expectedNumberOfSignals = 110 // numberOfSignalsPerId * numberOfIds = 11 * 10
+  private val es = Executors.newCachedThreadPool
 
   before {
     // create the checkpoint dir
@@ -59,13 +60,19 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
   after {
     try {
       kafkaServer.shutdown()
+    } catch {
+      case _: Throwable => // Catching all exceptions and not doing anything with them
     }
     try {
       cleanEmbeddedCassandra()
+    } catch {
+      case _: Throwable => // Catching all exceptions and not doing anything with them
     }
-
-   // EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
-
+    try {
+      es.shutdownNow()
+    } catch {
+      case _: Throwable => // Catching all exceptions and not doing anything with them
+    }
   }
 
   test("complete DSP Persister test, push signals to kafka, spark consumes and persist to cassandra") {
@@ -87,16 +94,17 @@ class PersisterSuite extends FunSuite with BeforeAndAfter {
 
     // 2) start the driver asynchronously
     {
-      Future {
-        // start the driver
-        Persister.main(Array[String]())
-      }
+      es.submit(new Runnable {
+        override def run() {
+          Persister.main(Array[String]())
+        }
+      })
     }
 
     // 3) push signal to kafka
     {
-      new TestSignalProducer(kafkaServer.getKafkaConnect, topicAndKeyspace, numberOfSignalsPerSignalId,
-        List(100, 110), SignalType.SORTER, "persisterProducer")
+      new TestSignalProducer(kafkaServer.getKafkaConnect, topicAndKeyspace, numberOfSignalsPerSignalId, List(100, 110),
+        SORTER, "persisterProducer")
     }
 
     // 4) query cassandra until all the signals have been saved

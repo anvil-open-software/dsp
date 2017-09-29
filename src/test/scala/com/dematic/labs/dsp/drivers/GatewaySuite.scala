@@ -2,7 +2,7 @@ package com.dematic.labs.dsp.drivers
 
 import java.lang
 import java.nio.file.Paths
-import java.util.concurrent.{Callable, TimeUnit}
+import java.util.concurrent.{Callable, Executors, TimeUnit}
 import java.util.{Collections, Properties}
 
 import com.dematic.labs.dsp.configuration.DriverUnitTestConfiguration
@@ -11,6 +11,7 @@ import com.dematic.labs.dsp.simulators.TestSignalProducer
 import info.batey.kafka.unit.KafkaUnit
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
 import org.awaitility.Awaitility._
+import org.cassandraunit.utils.EmbeddedCassandraServerHelper.cleanEmbeddedCassandra
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
 import org.scalatest.{BeforeAndAfter, FunSuite}
@@ -24,9 +25,9 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
 
   @Rule var checkpoint = new TemporaryFolder
 
-  val kafkaServer = new KafkaUnit
-
-  val numberOfSignalsPerSignalId = 100
+  private val kafkaServer = new KafkaUnit
+  private val numberOfSignalsPerSignalId = 100
+  private val es = Executors.newCachedThreadPool
 
   before {
     // create the checkpoint dir
@@ -60,7 +61,21 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
   }
 
   after {
-    kafkaServer.shutdown()
+    try {
+      kafkaServer.shutdown()
+    } catch {
+      case _: Throwable => // Catching all exceptions and not doing anything with them
+    }
+    try {
+      cleanEmbeddedCassandra()
+    } catch {
+      case _: Throwable => // Catching all exceptions and not doing anything with them
+    }
+    try {
+      es.shutdownNow()
+    } catch {
+      case _: Throwable => // Catching all exceptions and not doing anything with them
+    }
   }
 
   test("complete DSP Gateway test, push signals to kafka, Spark consumes and orders by signalType and saves to other " +
@@ -68,14 +83,16 @@ class GatewaySuite extends FunSuite with BeforeAndAfter {
 
     // 1) start the drivers asynchronously
     {
-      Future {
-        // start the driver
-        Gateway.main(Array[String]())
-      }
-      Future {
-        // start the driver
-        GatewayConsumer.main(Array[String]())
-      }
+      es.submit(new Runnable {
+        override def run() {
+          Gateway.main(Array[String]())
+        }
+      })
+      es.submit(new Runnable {
+        override def run() {
+          GatewayConsumer.main(Array[String]())
+        }
+      })
     }
 
     // total signals per Id and type = 3300, total by forwarded topic = 1100

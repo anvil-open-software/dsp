@@ -38,11 +38,13 @@ public final class SignalAggregationTest {
     @Rule
     public final TemporaryFolder checkpoint = new TemporaryFolder();
 
+    private final ExecutorService executorService;
     private DriverConfiguration config;
     private final KafkaUnit kafkaServer;
 
     public SignalAggregationTest() throws IOException {
         checkpoint.create();
+        executorService = Executors.newCachedThreadPool();
         kafkaServer = new KafkaUnit();
     }
 
@@ -73,7 +75,11 @@ public final class SignalAggregationTest {
         } catch (final Throwable ignore) {
         }
         try {
-            EmbeddedCassandraServerHelper.cleanEmbeddedCassandra();
+            cleanEmbeddedCassandra();
+        } catch (final Throwable ignore) {
+        }
+        try {
+            executorService.shutdownNow();
         } catch (final Throwable ignore) {
         }
     }
@@ -96,7 +102,6 @@ public final class SignalAggregationTest {
             try (final Stream<String> stream =
                          Files.lines(Paths.get(uri)).filter(f -> !f.startsWith("//"))) {
                 stream.forEach(session::execute);
-
             }
         }
 

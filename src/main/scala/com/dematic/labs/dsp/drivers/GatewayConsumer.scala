@@ -71,8 +71,7 @@ object GatewayConsumer {
 
       // keep alive
       sparkSession.streams.awaitAnyTermination
-    } finally {
+    } finally
       sparkSession.close
-    }
   }
 }
