@@ -3,12 +3,24 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>com.dematic.labs.toolkit.buildProcess</groupId>
+        <artifactId>parentPom</artifactId>
+        <version>2.0.2</version>
+    </parent>
+
     <groupId>com.dematic.labs</groupId>
     <artifactId>dsp</artifactId>
     <version>0.1.3-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
     <name>Data Streaming Pipeline Sandbox</name>
+
+    <modules>
+        <module>data</module>
+        <module>simulators</module>
+        <module>drivers</module>
+    </modules>
 
     <scm>
         <developerConnection>scm:git:git@gitlab.ops.cld:Dematiclabs/dsp.git</developerConnection>
@@ -39,7 +51,6 @@
                 <scope>import</scope>
             </dependency>
         </dependencies>
-
     </dependencyManagement>
 
     <dependencies>
@@ -55,61 +66,21 @@
             <artifactId>scala-java8-compat_2.11</artifactId>
             <version>0.8.0</version>
         </dependency>
-        <!-- dlabs dependencies -->
-        <dependency>
-            <groupId>com.dematic.labs.toolkit_bigdata</groupId>
-            <artifactId>simulators</artifactId>
-            <version>1.0.13-SNAPSHOT</version>
-        </dependency>
-        <!-- spark sql/data frames/data sets -->
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.11</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql-kafka-0-10_2.11</artifactId>
-        </dependency>
-        <!-- spark streaming dependencies -->
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-streaming_2.11</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-streaming-kafka-0-10_2.11</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.parquet</groupId>
-            <artifactId>parquet-avro</artifactId>
-        </dependency>
         <!-- kafka support -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka_2.11</artifactId>
-        </dependency>
-        <!-- cassandra dependencies -->
-        <dependency>
-            <groupId>com.datastax.spark</groupId>
-            <artifactId>spark-cassandra-connector_2.11</artifactId>
-        </dependency>
-        <!-- cassandra client utils -->
-        <dependency>
-            <groupId>org.apache.cassandra</groupId>
-            <artifactId>cassandra-clientutil</artifactId>
-        </dependency>
-        <!-- cassandra client driver for java apps -->
-        <dependency>
-            <groupId>com.datastax.cassandra</groupId>
-            <artifactId>cassandra-driver-core</artifactId>
         </dependency>
         <!-- configuration -->
         <dependency>
             <groupId>com.typesafe</groupId>
             <artifactId>config</artifactId>
         </dependency>
-
         <!-- utilities -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-scala_2.11</artifactId>
+        </dependency>
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
@@ -124,7 +95,6 @@
             <version>2.3.0</version>
             <type>pom</type>
         </dependency>
-
         <!-- logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -138,7 +108,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>log4j-over-slf4j</artifactId>
         </dependency>
-
         <!-- declare tests dependencies -->
         <dependency>
             <groupId>junit</groupId>
@@ -164,50 +133,17 @@
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <!-- prometheus monitoring -->
         <dependency>
-            <groupId>com.dematic.labs.dsp.monitor</groupId>
-            <artifactId>dsp-monitor</artifactId>
-            <version>0.0.3</version>
-
-            <exclusions>
-                <exclusion>
-                    <groupId>io.prometheus</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.dropwizard.metrics</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility-scala</artifactId>
+            <version>2.0.0</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
-    <!-- We use the maven-assembly plugin to create a fat jar that contains all dependencies
-        except spark and its transitive dependencies. The resulting fat-jar can be executed
-        on a cluster. Change the value of Program-Class if your program entry point changes. -->
     <build>
         <defaultGoal>clean install</defaultGoal>
         <plugins>
-            <!-- This plugin compiles Java files -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.6.1</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
             <!-- This plugin compiles Scala files -->
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
@@ -229,6 +165,10 @@
                 <version>1.0</version>
                 <configuration>
                     <parallel>false</parallel>
+                    <systemProperties>
+                        <spark.driver.allowMultipleContexts>true</spark.driver.allowMultipleContexts>
+                        <spark.streaming.stopGracefullyOnShutdown>true</spark.streaming.stopGracefullyOnShutdown>
+                    </systemProperties>
                 </configuration>
                 <executions>
                     <execution>
@@ -236,102 +176,6 @@
                         <goals>
                             <goal>test</goal>
                         </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- We use the maven-shade plugin to create a fat jar that contains all dependencies
-            except spark and it's transitive dependencies. The resulting fat-jar can be executed
-            on a cluster. Change the value of Program-Class if your program entry point changes. -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <!-- Drivers -->
-                    <execution>
-                        <id>drivers</id>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <phase>package</phase>
-                        <configuration>
-                            <outputFile>target/${project.artifactId}-driver.jar</outputFile>
-                            <filters>
-                                <filter>
-                                    <!-- Do not copy the signatures in the META-INF folder.
-                                    Otherwise, this might cause SecurityExceptions when using the JAR. -->
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>junit:junit</exclude>
-                                        <excude>com/dematic/labs/dsp/simulators/**</excude>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                        </configuration>
-                    </execution>
-                    <!-- simulators -->
-                    <execution>
-                        <id>simulators</id>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <phase>package</phase>
-                        <configuration>
-                            <outputFile>target/${project.artifactId}-simulators.jar</outputFile>
-                            <filters>
-                                <filter>
-                                    <!-- Do not copy the signatures in the META-INF folder.
-                                    Otherwise, this might cause SecurityExceptions when using the JAR. -->
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>junit:junit</exclude>
-                                        <exclude>com/dematic/labs/dsp/drivers/**</exclude>
-                                        <exclude>org/apache/spark/**</exclude>
-                                        <exclude>org/spark_project/**</exclude>
-                                        <exclude>org/apache/hadoop/**</exclude>
-                                        <exclude>com/datastax/**</exclude>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                        </configuration>
-                    </execution>
-
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <id>attach-artifacts</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>attach-artifact</goal>
-                        </goals>
-                        <configuration>
-                            <artifacts>
-                                <artifact>
-                                    <file>src/main/resources/persister.cql</file>
-                                    <type>cql</type>
-                                    <classifier>persister</classifier>
-                                </artifact>
-                                <artifact>
-                                    <file>src/main/resources/signalAggregation.cql</file>
-                                    <type>cql</type>
-                                    <classifier>signalAggregation</classifier>
-                                </artifact>
-                            </artifacts>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
