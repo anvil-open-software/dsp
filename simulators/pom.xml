@@ -12,6 +12,12 @@
     <artifactId>simulators</artifactId>
 
     <dependencies>
+        <!-- dlabs dependencies -->
+        <dependency>
+            <groupId>com.dematic.labs.toolkit_bigdata</groupId>
+            <artifactId>simulators</artifactId>
+            <version>1.0.13-SNAPSHOT</version>
+        </dependency>
         <dependency>
             <groupId>com.dematic.labs.dsp</groupId>
             <artifactId>data</artifactId>
@@ -33,7 +39,7 @@
                         <phase>package</phase>
                         <configuration>
                             <shadedArtifactAttached>true</shadedArtifactAttached>
-                            <shadedClassifierName>simulators</shadedClassifierName>
+                            <shadedClassifierName>dsp</shadedClassifierName>
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>

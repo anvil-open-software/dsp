@@ -66,56 +66,21 @@
             <artifactId>scala-java8-compat_2.11</artifactId>
             <version>0.8.0</version>
         </dependency>
-        <!-- dlabs dependencies -->
-        <dependency>
-            <groupId>com.dematic.labs.toolkit_bigdata</groupId>
-            <artifactId>simulators</artifactId>
-            <version>1.0.13-SNAPSHOT</version>
-        </dependency>
-        <!-- spark sql/data frames/data sets -->
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.11</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql-kafka-0-10_2.11</artifactId>
-        </dependency>
-        <!-- spark streaming dependencies -->
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-streaming_2.11</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-streaming-kafka-0-10_2.11</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.parquet</groupId>
-            <artifactId>parquet-avro</artifactId>
-        </dependency>
         <!-- kafka support -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka_2.11</artifactId>
-        </dependency>
-        <!-- cassandra dependencies -->
-        <dependency>
-            <groupId>com.datastax.spark</groupId>
-            <artifactId>spark-cassandra-connector_2.11</artifactId>
-        </dependency>
-        <!-- cassandra client driver for java apps -->
-        <dependency>
-            <groupId>com.datastax.cassandra</groupId>
-            <artifactId>cassandra-driver-core</artifactId>
         </dependency>
         <!-- configuration -->
         <dependency>
             <groupId>com.typesafe</groupId>
             <artifactId>config</artifactId>
         </dependency>
-
         <!-- utilities -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-scala_2.11</artifactId>
+        </dependency>
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
@@ -130,7 +95,6 @@
             <version>2.3.0</version>
             <type>pom</type>
         </dependency>
-
         <!-- logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -144,7 +108,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>log4j-over-slf4j</artifactId>
         </dependency>
-
         <!-- declare tests dependencies -->
         <dependency>
             <groupId>junit</groupId>
@@ -174,24 +137,6 @@
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility-scala</artifactId>
             <version>2.0.0</version>
-        </dependency>
-
-        <!-- prometheus monitoring -->
-        <dependency>
-            <groupId>com.dematic.labs.dsp.monitor</groupId>
-            <artifactId>dsp-monitor</artifactId>
-            <version>0.0.3</version>
-
-            <exclusions>
-                <exclusion>
-                    <groupId>io.prometheus</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.dropwizard.metrics</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
     </dependencies>
 
