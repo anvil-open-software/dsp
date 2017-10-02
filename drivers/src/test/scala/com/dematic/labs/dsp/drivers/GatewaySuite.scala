@@ -21,6 +21,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class GatewaySuite extends FunSuite with BeforeAndAfter {
+
   val logger: Logger = LoggerFactory.getLogger("GatewaySuite")
 
   @Rule var checkpoint = new TemporaryFolder
