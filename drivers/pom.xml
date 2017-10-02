@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.dematic.labs</groupId>
+        <artifactId>dsp</artifactId>
+        <version>0.1.3-SNAPSHOT</version>
+    </parent>
+
+    <groupId>com.dematic.labs.dsp</groupId>
+    <artifactId>drivers</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.dematic.labs.dsp</groupId>
+            <artifactId>data</artifactId>
+            <version>0.1.3-SNAPSHOT</version>
+        </dependency>
+        <!-- todo: figure out uber jar if included -->
+        <dependency>
+            <groupId>com.dematic.labs.dsp</groupId>
+            <artifactId>simulators</artifactId>
+            <version>0.1.3-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- create the sparks driver uber jars -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <phase>package</phase>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>drivers</shadedClassifierName>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>junit:junit</exclude>
+                                        <exclude>jmock:*</exclude>
+                                        <exclude>*:xml-apis</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <artifactSet>
+                                <excludes>
+                                    <exclude>junit:junit</exclude>
+                                    <exclude>jmock:*</exclude>
+                                    <exclude>*:xml-apis</exclude>
+                                    <exclude>*:tests</exclude>
+                                    <exclude>*:test-jar:tests</exclude>
+                                </excludes>
+                            </artifactSet>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-artifacts</id>
+                        <goals>
+                            <goal>attach-artifact</goal>
+                        </goals>
+                        <phase>package</phase>
+                        <configuration>
+                            <artifacts>
+                                <artifact>
+                                    <file>src/main/resources/persister.cql</file>
+                                    <type>cql</type>
+                                    <classifier>persister</classifier>
+                                </artifact>
+                                <artifact>
+                                    <file>src/main/resources/signalAggregation.cql</file>
+                                    <type>cql</type>
+                                    <classifier>signalAggregation</classifier>
+                                </artifact>
+                            </artifacts>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

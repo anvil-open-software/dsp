@@ -3,12 +3,24 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>com.dematic.labs.toolkit.buildProcess</groupId>
+        <artifactId>parentPom</artifactId>
+        <version>2.0.2</version>
+    </parent>
+
     <groupId>com.dematic.labs</groupId>
     <artifactId>dsp</artifactId>
     <version>0.1.3-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
     <name>Data Streaming Pipeline Sandbox</name>
+
+    <modules>
+        <module>data</module>
+        <module>simulators</module>
+        <module>drivers</module>
+    </modules>
 
     <scm>
         <developerConnection>scm:git:git@gitlab.ops.cld:Dematiclabs/dsp.git</developerConnection>
@@ -39,7 +51,6 @@
                 <scope>import</scope>
             </dependency>
         </dependencies>
-
     </dependencyManagement>
 
     <dependencies>
@@ -184,30 +195,9 @@
         </dependency>
     </dependencies>
 
-    <!-- We use the maven-assembly plugin to create a fat jar that contains all dependencies
-        except spark and its transitive dependencies. The resulting fat-jar can be executed
-        on a cluster. Change the value of Program-Class if your program entry point changes. -->
     <build>
         <defaultGoal>clean install</defaultGoal>
         <plugins>
-            <!-- This plugin compiles Java files -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.6.1</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
             <!-- This plugin compiles Scala files -->
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
@@ -240,106 +230,6 @@
                         <goals>
                             <goal>test</goal>
                         </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- We use the maven-shade plugin to create a fat jar that contains all dependencies
-            except spark and it's transitive dependencies. The resulting fat-jar can be executed
-            on a cluster. Change the value of Program-Class if your program entry point changes. -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <!-- Drivers -->
-                    <execution>
-                        <id>drivers</id>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <phase>package</phase>
-                        <configuration>
-                            <shadedArtifactAttached>true</shadedArtifactAttached>
-                            <shadedClassifierName>driver</shadedClassifierName>
-                            <!--<outputFile>target/${project.artifactId}-driver.jar</outputFile>-->
-                            <filters>
-                                <filter>
-                                    <!-- Do not copy the signatures in the META-INF folder.
-                                    Otherwise, this might cause SecurityExceptions when using the JAR. -->
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>junit:junit</exclude>
-                                        <excude>com/dematic/labs/dsp/simulators/**</excude>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                        </configuration>
-                    </execution>
-                    <!-- simulators -->
-                    <execution>
-                        <id>simulators</id>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                        <phase>package</phase>
-                        <configuration>
-                            <shadedArtifactAttached>true</shadedArtifactAttached>
-                            <shadedClassifierName>simulators</shadedClassifierName>
-                            <!--<outputFile>target/${project.artifactId}-simulators.jar</outputFile>-->
-                            <filters>
-                                <filter>
-                                    <!-- Do not copy the signatures in the META-INF folder.
-                                    Otherwise, this might cause SecurityExceptions when using the JAR. -->
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>junit:junit</exclude>
-                                        <exclude>com/dematic/labs/dsp/drivers/**</exclude>
-                                        <exclude>org/apache/spark/**</exclude>
-                                        <exclude>org/spark_project/**</exclude>
-                                        <exclude>org/apache/hadoop/**</exclude>
-                                        <exclude>com/datastax/**</exclude>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                            <createDependencyReducedPom>false</createDependencyReducedPom>
-                        </configuration>
-                    </execution>
-
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <id>attach-artifacts</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>attach-artifact</goal>
-                        </goals>
-                        <configuration>
-                            <artifacts>
-                                <artifact>
-                                    <file>src/main/resources/persister.cql</file>
-                                    <type>cql</type>
-                                    <classifier>persister</classifier>
-                                </artifact>
-                                <artifact>
-                                    <file>src/main/resources/signalAggregation.cql</file>
-                                    <type>cql</type>
-                                    <classifier>signalAggregation</classifier>
-                                </artifact>
-                            </artifacts>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
