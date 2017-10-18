@@ -62,11 +62,17 @@ object Throughput extends App {
   import monix.execution.Scheduler.Implicits.global
   // fire and forget, until timer is finished
   try {
+    val lowSignalRange: Int = config.getSignalIdRangeLow
+    val highSignalRange: Int = config.getSignalIdRangeHigh
     while (!countdownTimer.isFinished) {
-      Task.now({
-        val json = toJson(new Signal(nextId(), Instant.now.toString, SORTER.toString, nextRandomValue(), config.getId))
-        producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json))
-      }, global)
+      // finish the cycle then check if timer is finished
+      for (signalId <- lowSignalRange to highSignalRange) {
+        Task.now({
+          val json =
+            toJson(new Signal(signalId, Instant.now.toString, SORTER.toString, nextRandomValue(), config.getId))
+          producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json))
+        }, global)
+      }
     }
   } finally {
     // close producer
