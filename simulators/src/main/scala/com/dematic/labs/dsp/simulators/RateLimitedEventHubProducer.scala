@@ -37,6 +37,7 @@ object RateLimitedEventHubProducer extends App {
 
   val lowSignalRange: Int = config.getSignalIdRangeLow
   val highSignalRange: Int = config.getSignalIdRangeHigh
+  val producerId = config.getId
 
   for (signalId <- lowSignalRange to highSignalRange) {
     // on a separate thread
@@ -54,7 +55,7 @@ object RateLimitedEventHubProducer extends App {
       while (!countdownTimer.isFinished) {
         rateLimiter.acquire()
         val bytes = toJson(new Signal(signalId, Instant.now.toString, SORTER.toString, nextRandomValue(),
-          "%s-eventHub".format(signalId)))
+          "%s-%s".format(producerId, signalId)))
           .getBytes(Charset.defaultCharset())
         ehClient.send(new EventData(bytes))
       }
