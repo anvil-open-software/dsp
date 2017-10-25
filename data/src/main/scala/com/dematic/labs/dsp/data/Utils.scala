@@ -31,7 +31,6 @@ object Utils {
     json.getBytes(Charset.defaultCharset())
   }
 
-  // todo: look int spark sql timestamp conversions
   def toTimeStamp(timeStr: String): Timestamp = {
     val dateFormat1: DateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
     val dateFormat2: DateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss")
