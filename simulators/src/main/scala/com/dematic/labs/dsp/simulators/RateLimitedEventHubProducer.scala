@@ -16,6 +16,9 @@ import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.Future
 import scala.util.Random
 
+/**
+  * Used only within  Azure.
+  */
 object RateLimitedEventHubProducer extends App {
   // load all the configuration
   private val config = new simulators.EventHubConfiguration.Builder().build
