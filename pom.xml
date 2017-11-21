@@ -22,12 +22,6 @@
         <module>drivers</module>
     </modules>
 
-    <scm>
-        <connection>scm:git:https://gitlab.dematic.com/Dematiclabs/dsp.git</connection>
-        <developerConnection>${project.scm.connection}</developerConnection>
-        <tag>HEAD</tag>
-    </scm>
-
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <scala.major.minor.version>2.11.11</scala.major.minor.version>
