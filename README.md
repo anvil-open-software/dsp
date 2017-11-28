@@ -14,5 +14,6 @@ simulators-${project.version}-dsp.jar -- a self contained jar that includes all 
 configured using a configuration file. See throughput.conf for an example. To run a simulator
 run the following command.
 
+
 java -cp simulators-${project.version}-dsp.jar -Dconfig.file=/pathToFile/throughput.conf com.dematic.labs.dsp.simulators.Throughput
 
