@@ -25,15 +25,6 @@ object Throughput extends App {
   private val countdownTimer = new CountdownTimer
   countdownTimer.countDown(config.getDurationInMinutes.toInt)
 
-  // generated ids
-  private val nextId = {
-    var id: Long = 1
-    () => {
-      id += 1
-      id
-    }
-  }
-
   // generated values
   private val nextRandomValue = {
     val random = new Random
