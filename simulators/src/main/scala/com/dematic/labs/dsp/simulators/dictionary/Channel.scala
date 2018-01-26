@@ -57,9 +57,13 @@ object Channel {
     "LiIonCharger_ChargingCurrA" -> new ChannelDefinition("0", "1000", "A"),
     "LiIoBMS_SOCwithSOH" -> new ChannelDefinition("0", "100", "%"),
     "LiIoBMS_OutputVoltage" -> new ChannelDefinition("0", "130", "V"))
+
+  def main(args: Array[String]) {
+    channel.foreach(s => println(s))
+  }
 }
 
-final private class ChannelDefinition(val min: String, val max: String, val unit: String) {
+final class ChannelDefinition(val min: String, val max: String, val unit: String) {
   def getMin: String = {
     min
   }
@@ -71,4 +75,6 @@ final private class ChannelDefinition(val min: String, val max: String, val unit
   def getUnit: String = {
     unit
   }
+
+  override def toString = s"ChannelDefinition($min, $max, $unit)"
 }
