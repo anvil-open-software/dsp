@@ -21,7 +21,7 @@ import scala.util.Random
   */
 object RateLimitedEventHubProducer extends App {
   // load all the configuration
-  private val config = new simulators.EventHubConfiguration.Builder().build
+  private val config = new simulators.configuration.EventHubConfiguration.Builder().build
   // define how long to run the throughput simulator
   private val countdownTimer = new CountdownTimer
   countdownTimer.countDown(config.getDurationInMinutes.toInt)

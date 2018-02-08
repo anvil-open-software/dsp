@@ -1,4 +1,4 @@
-package com.dematic.labs.dsp.simulators
+package com.dematic.labs.dsp.simulators.configuration
 
 import org.scalatest.FunSuite
 

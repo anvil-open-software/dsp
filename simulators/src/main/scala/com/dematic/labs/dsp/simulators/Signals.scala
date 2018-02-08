@@ -4,9 +4,9 @@ import java.time.Instant
 import java.util
 
 import com.dematic.labs.dsp.data.Signal
-import com.dematic.labs.toolkit_bigdata.simulators.configuration.MinimalProducerConfiguration
 import com.dematic.labs.dsp.data.SignalType._
 import com.dematic.labs.dsp.data.Utils.toJson
+import com.dematic.labs.toolkit_bigdata.simulators.configuration.MinimalProducerConfiguration
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 
 import scala.util.Random
@@ -45,8 +45,7 @@ object Signals extends App {
 
     for (signalId <- lowSignalRange to highSignalRange) {
       for (_ <- 1 to numberOfSignals) {
-        val json = toJson(new Signal(signalId, Instant.now.toString, SORTER.toString, nextRandomValue(),
-          config.getId))
+        val json = toJson(new Signal(signalId, Instant.now.toString, SORTER.toString, nextRandomValue(), config.getId))
         producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json))
       }
     }
