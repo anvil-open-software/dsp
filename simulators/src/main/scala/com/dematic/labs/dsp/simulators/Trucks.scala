@@ -41,7 +41,7 @@ object Trucks extends App {
     val lowTruckRange: Int = config.getTruckIdRangeLow
     val highTruckRange: Int = config.getTruckIdRangeHigh
 
-    // finish the cycle then check if timer is finished
+    // dispatch per truck to run on its own thread
     for (truckId <- lowTruckRange to highTruckRange) {
       Task {
         dispatchTruck(truckId.toString)
