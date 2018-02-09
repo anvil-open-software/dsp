@@ -51,12 +51,12 @@ object Trucks extends App {
     try {
       influxDB.close()
     } catch {
-      case NonFatal(t) => logger.error("Error: closing InfluxDb")
+      case NonFatal(t) => logger.error("Error: closing InfluxDb", t)
     }
     try {
       producer.close(15, TimeUnit.SECONDS)
     } catch {
-      case NonFatal(t) => logger.error("Error: closing Kafka Producer")
+      case NonFatal(t) => logger.error("Error: closing Kafka Producer", t)
     }
   }
 
