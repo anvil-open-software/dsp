@@ -6,8 +6,9 @@ import java.util.concurrent.TimeUnit
 import com.dematic.labs.dsp.simulators.configuration.TruckConfiguration
 import com.dematic.labs.toolkit_bigdata.simulators.CountdownTimer
 import monix.eval.Task
-import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig}
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.influxdb.InfluxDBFactory
+import org.influxdb.dto.Query
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.util.control.NonFatal
@@ -37,7 +38,21 @@ object Trucks extends App {
 
   import monix.execution.Scheduler.Implicits.global
 
+  import collection.JavaConversions._
+
+
   try {
+    val timeSeries = List()
+
+    // query influxDb to get the next set of data
+    //todo: figure out how to get the next range of data
+    val qr = influxDB.query(new Query("SELECT time, value FROM T_motTemp_Lft limit 10000", config.getDatabase))
+    qr.getResults foreach (it => {
+      it.getSeries foreach (it => {
+        timeSeries.add(it.getValues)
+      })
+    })
+
     val lowTruckRange: Int = config.getTruckIdRangeLow
     val highTruckRange: Int = config.getTruckIdRangeHigh
 
@@ -68,6 +83,9 @@ object Trucks extends App {
     // keep pushing msgs to kafka until timer finishes
     while (!countdownTimer.isFinished) {
 
+
+      // send to kafka
+      producer.send(new ProducerRecord[String, AnyRef](config.getTopics, ""))
     }
   }
 }
