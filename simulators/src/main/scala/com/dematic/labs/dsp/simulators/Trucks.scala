@@ -18,6 +18,11 @@ object Trucks extends App {
 
   // load all the configuration
   private val config = new TruckConfiguration.Builder().build
+
+  // define how long to run the simulator
+  private val countdownTimer = new CountdownTimer
+  countdownTimer.countDown(config.getDurationInMinutes.toInt)
+
   // create the connection to influxDb
   private val influxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword)
   // shared kafka producer, used for batching and compression
@@ -35,21 +40,18 @@ object Trucks extends App {
   properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, config.getCompressionType)
 
   private val producer = new KafkaProducer[String, AnyRef](properties)
+  private var timeSeries: List[AnyRef] = List()
 
   import monix.execution.Scheduler.Implicits.global
 
   import collection.JavaConversions._
 
-
   try {
-    val timeSeries = List()
-
-    // query influxDb to get the next set of data
-    //todo: figure out how to get the next range of data
-    val qr = influxDB.query(new Query("SELECT time, value FROM T_motTemp_Lft limit 10000", config.getDatabase))
+    val qr =
+      influxDB.query(new Query("SELECT time, value FROM T_motTemp_Lft where time > '2017-01-01' AND time < '2017-03-01' order by DESC", config.getDatabase))
     qr.getResults foreach (it => {
       it.getSeries foreach (it => {
-        timeSeries.add(it.getValues)
+        timeSeries = timeSeries ++ it.getValues
       })
     })
 
@@ -59,7 +61,7 @@ object Trucks extends App {
     // dispatch per truck to run on its own thread
     for (truckId <- lowTruckRange to highTruckRange) {
       Task {
-        dispatchTruck(truckId.toString)
+        dispatchTruck(truckId.toString, 5)
       }.runAsync
     }
   } finally {
@@ -75,17 +77,15 @@ object Trucks extends App {
     }
   }
 
-  // define how long to run the simulator
-  private val countdownTimer = new CountdownTimer
-  countdownTimer.countDown(config.getDurationInMinutes.toInt)
-
-  def dispatchTruck(truckId: String) {
+  def dispatchTruck(truckId: String, index: Int) {
     // keep pushing msgs to kafka until timer finishes
     while (!countdownTimer.isFinished) {
-
-
+      val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[AnyRef]]
+      // create the json
+      val json =
+        s"""{"truck":"$truckId","_timestamp":"${data.get(0)}","channel":"T_motTemp_Lft","value":${data.get(1)},"unit":"C${"\u00b0"}"}"""
       // send to kafka
-      producer.send(new ProducerRecord[String, AnyRef](config.getTopics, ""))
+      producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json))
     }
   }
 }
