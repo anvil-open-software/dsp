@@ -7,24 +7,25 @@ import com.dematic.labs.dsp.simulators.configuration.TruckConfiguration
 import com.dematic.labs.toolkit_bigdata.simulators.CountdownTimer
 import monix.eval.Task
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
-import org.influxdb.InfluxDBFactory
 import org.influxdb.dto.Query
+import org.influxdb.{InfluxDB, InfluxDBFactory}
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.util.Random
 import scala.util.control.NonFatal
 
 object Trucks extends App {
   val logger: Logger = LoggerFactory.getLogger("Trucks")
 
   // load all the configuration
-  private val config = new TruckConfiguration.Builder().build
+  private val config: TruckConfiguration = new TruckConfiguration.Builder().build
 
   // define how long to run the simulator
-  private val countdownTimer = new CountdownTimer
+  private val countdownTimer: CountdownTimer = new CountdownTimer
   countdownTimer.countDown(config.getDurationInMinutes.toInt)
 
   // create the connection to influxDb
-  private val influxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword)
+  private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword)
   // shared kafka producer, used for batching and compression
   private val properties: util.Map[String, AnyRef] = new util.HashMap[String, AnyRef]
   properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.getBootstrapServers)
@@ -39,7 +40,7 @@ object Trucks extends App {
   properties.put(ProducerConfig.LINGER_MS_CONFIG, Predef.int2Integer(config.getLingerMs))
   properties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, config.getCompressionType)
 
-  private val producer = new KafkaProducer[String, AnyRef](properties)
+  private val producer: KafkaProducer[String, AnyRef] = new KafkaProducer[String, AnyRef](properties)
   private var timeSeries: List[AnyRef] = List()
 
   import monix.execution.Scheduler.Implicits.global
@@ -61,7 +62,7 @@ object Trucks extends App {
     // dispatch per truck to run on its own thread
     for (truckId <- lowTruckRange to highTruckRange) {
       Task {
-        dispatchTruck(truckId.toString, 5)
+        dispatchTruck(truckId.toString)
       }.runAsync
     }
   } finally {
@@ -77,7 +78,8 @@ object Trucks extends App {
     }
   }
 
-  def dispatchTruck(truckId: String, index: Int) {
+  def dispatchTruck(truckId: String) {
+    var index = randomIndex()
     // keep pushing msgs to kafka until timer finishes
     while (!countdownTimer.isFinished) {
       val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[AnyRef]]
@@ -86,6 +88,12 @@ object Trucks extends App {
         s"""{"truck":"$truckId","_timestamp":"${data.get(0)}","channel":"T_motTemp_Lft","value":${data.get(1)},"unit":"C${"\u00b0"}"}"""
       // send to kafka
       producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json))
+      index = index + 1
     }
+  }
+
+  def randomIndex(): Int = {
+    // generate a random index between 0 and half of the time series list
+    Random.nextInt(timeSeries.size / 2)
   }
 }
