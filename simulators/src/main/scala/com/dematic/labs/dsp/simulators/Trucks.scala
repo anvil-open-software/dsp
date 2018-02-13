@@ -48,8 +48,9 @@ object Trucks extends App {
   import collection.JavaConversions._
 
   try {
-    val qr =
-      influxDB.query(new Query("SELECT time, value FROM T_motTemp_Lft where time > '2017-01-01' AND time < '2017-03-01' order by DESC", config.getDatabase))
+    val qr = influxDB.query(new Query(s"SELECT time, value FROM T_motTemp_Lft where time > " +
+      s"'${config.getPredicateDateRangeLow}' AND time < '${config.getPredicateDateRangeHigh}' order by DESC",
+      config.getDatabase))
     qr.getResults foreach (it => {
       it.getSeries foreach (it => {
         timeSeries = timeSeries ++ it.getValues
