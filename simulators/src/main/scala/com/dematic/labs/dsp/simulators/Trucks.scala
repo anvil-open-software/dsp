@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.dsp.simulators.configuration.TruckConfiguration
 import com.dematic.labs.toolkit_bigdata.simulators.CountdownTimer
+import com.google.common.util.concurrent.RateLimiter
 import monix.eval.Task
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.influxdb.dto.Query
@@ -19,11 +20,6 @@ object Trucks extends App {
 
   // load all the configuration
   private val config: TruckConfiguration = new TruckConfiguration.Builder().build
-
-  // define how long to run the simulator
-  private val countdownTimer: CountdownTimer = new CountdownTimer
-  countdownTimer.countDown(config.getDurationInMinutes.toInt)
-
   // create the connection to influxDb
   private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword)
   // shared kafka producer, used for batching and compression
@@ -57,13 +53,17 @@ object Trucks extends App {
       })
     })
 
+    // define how long to run the simulator
+    val countdownTimer: CountdownTimer = new CountdownTimer
+    countdownTimer.countDown(config.getDurationInMinutes.toInt)
+
     val lowTruckRange: Int = config.getTruckIdRangeLow
     val highTruckRange: Int = config.getTruckIdRangeHigh
 
     // dispatch per truck to run on its own thread
     for (truckId <- lowTruckRange to highTruckRange) {
       Task {
-        dispatchTruck(truckId.toString)
+        dispatchTruck(truckId.toString, countdownTimer)
       }.runAsync
     }
   } finally {
@@ -79,14 +79,18 @@ object Trucks extends App {
     }
   }
 
-  def dispatchTruck(truckId: String) {
+  def dispatchTruck(truckId: String, countdownTimer: CountdownTimer) {
     var index = randomIndex()
+    // will limit sends to 1 per second
+    val rateLimiter = RateLimiter.create(1, 0, TimeUnit.MINUTES) // make configurable if needed
     // keep pushing msgs to kafka until timer finishes
     while (!countdownTimer.isFinished) {
       val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[AnyRef]]
       // create the json
       val json =
         s"""{"truck":"$truckId","_timestamp":"${data.get(0)}","channel":"T_motTemp_Lft","value":${data.get(1)},"unit":"C${"\u00b0"}"}"""
+      // acquire permit to send, limits to 1 msg a second
+      rateLimiter.acquire()
       // send to kafka
       producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json))
       index = index + 1
