@@ -39,8 +39,6 @@ object Trucks extends App {
   private val producer: KafkaProducer[String, AnyRef] = new KafkaProducer[String, AnyRef](properties)
   private var timeSeries: List[AnyRef] = List()
 
-  import monix.execution.Scheduler.Implicits.global
-
   import collection.JavaConversions._
 
   try {
@@ -59,6 +57,14 @@ object Trucks extends App {
 
     val lowTruckRange: Int = config.getTruckIdRangeLow
     val highTruckRange: Int = config.getTruckIdRangeHigh
+    val numOfThreads = highTruckRange - lowTruckRange
+    // define the global scheduler and the num and max of threads, will be based on the number of trucks, this could
+    // cause thread starvation if to many trucks are defined, also, do not define less threads then the number of cores
+    if (Runtime.getRuntime.availableProcessors < numOfThreads) {
+      System.setProperty("scala.concurrent.context.maxThreads", numOfThreads.toString)
+      System.setProperty("scala.concurrent.context.numThreads", numOfThreads.toString)
+    }
+    import monix.execution.Scheduler.Implicits.global
 
     // dispatch per truck to run on its own thread
     for (truckId <- lowTruckRange to highTruckRange) {
