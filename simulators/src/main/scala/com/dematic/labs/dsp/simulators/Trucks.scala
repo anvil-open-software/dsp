@@ -1,7 +1,9 @@
 package com.dematic.labs.dsp.simulators
 
+import java.nio.charset.Charset
 import java.util
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.MINUTES
 
 import com.dematic.labs.dsp.simulators.configuration.TruckConfiguration
 import com.dematic.labs.toolkit_bigdata.simulators.CountdownTimer
@@ -12,6 +14,8 @@ import org.influxdb.dto.Query
 import org.influxdb.{InfluxDB, InfluxDBFactory}
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 import scala.util.Random
 import scala.util.control.NonFatal
 
@@ -51,10 +55,6 @@ object Trucks extends App {
       })
     })
 
-    // define how long to run the simulator
-    val countdownTimer: CountdownTimer = new CountdownTimer
-    countdownTimer.countDown(config.getDurationInMinutes.toInt)
-
     val lowTruckRange: Int = config.getTruckIdRangeLow
     val highTruckRange: Int = config.getTruckIdRangeHigh
     val numOfThreads = highTruckRange - lowTruckRange
@@ -66,31 +66,41 @@ object Trucks extends App {
     }
     import monix.execution.Scheduler.Implicits.global
 
+    // define how long to run the simulator
+    val countdownTimer: CountdownTimer = new CountdownTimer
+    countdownTimer.countDown(config.getDurationInMinutes.toInt)
+
     // dispatch per truck to run on its own thread
     for (truckId <- lowTruckRange to highTruckRange) {
       Task {
         dispatchTruck(truckId.toString, countdownTimer)
       }.runAsync
     }
+    // wait until config duration, do not want to close the shared kafka producer to soon
+    Await.result(Future {
+      while (!countdownTimer.isFinished) Thread.sleep(1000)
+    }, Duration(config.getDurationInMinutes, MINUTES))
+  } catch {
+    case NonFatal(all) => logger.error("Error:", all)
   } finally {
     try {
       influxDB.close()
     } catch {
-      case NonFatal(t) => logger.error("Error: closing InfluxDb", t)
+      case NonFatal(ex) => logger.error("Error: closing InfluxDb", ex)
     }
     try {
       producer.close(15, TimeUnit.SECONDS)
     } catch {
-      case NonFatal(t) => logger.error("Error: closing Kafka Producer", t)
+      case NonFatal(ex) => logger.error("Error: closing Kafka Producer", ex)
     }
   }
 
   def dispatchTruck(truckId: String, countdownTimer: CountdownTimer) {
     var index = randomIndex()
     // will limit sends to 1 per second
-    val rateLimiter = RateLimiter.create(1, 0, TimeUnit.MINUTES) // make configurable if needed
+    val rateLimiter = RateLimiter.create(1, 0, MINUTES) // make configurable if needed
     // keep pushing msgs to kafka until timer finishes
-    while (!countdownTimer.isFinished) {
+    do {
       val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[AnyRef]]
       // create the json
       val json =
@@ -98,9 +108,9 @@ object Trucks extends App {
       // acquire permit to send, limits to 1 msg a second
       rateLimiter.acquire()
       // send to kafka
-      producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json))
+      producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json.getBytes(Charset.defaultCharset())))
       index = index + 1
-    }
+    } while (!countdownTimer.isFinished)
   }
 
   def randomIndex(): Int = {
