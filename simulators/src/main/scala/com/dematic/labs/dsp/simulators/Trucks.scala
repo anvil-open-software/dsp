@@ -45,7 +45,7 @@ object Trucks extends App {
 
   try {
     val qr = influxDB.query(new Query(s"SELECT time, value FROM T_motTemp_Lft where time > " +
-      s"'${config.getPredicateDateRangeLow}' AND time < '${config.getPredicateDateRangeHigh}' order by DESC",
+      s"'${config.getPredicateDateRangeLow}' AND time < '${config.getPredicateDateRangeHigh}' order by ASC",
       config.getDatabase))
     qr.getResults foreach (it => {
       it.getSeries foreach (it => {
