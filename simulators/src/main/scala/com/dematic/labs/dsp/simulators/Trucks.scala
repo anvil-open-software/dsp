@@ -83,8 +83,8 @@ object Trucks extends App {
     tasks.foreach(task => {
       futures = futures :+ task.runAsync
     })
-    // wait for all futures to complete
-    Await.result(Future.sequence(futures), Duration(config.getDurationInMinutes, TimeUnit.MINUTES))
+    // wait for all futures to complete, add 1 minute to make sure all msgs sent
+    Await.result(Future.sequence(futures), Duration(config.getDurationInMinutes + 1, TimeUnit.MINUTES))
   } catch {
     case NonFatal(all) => logger.error("Error:", all)
   } finally {
