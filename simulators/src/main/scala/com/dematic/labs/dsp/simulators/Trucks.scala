@@ -70,16 +70,21 @@ object Trucks extends App {
     val countdownTimer: CountdownTimer = new CountdownTimer
     countdownTimer.countDown(config.getDurationInMinutes.toInt)
 
-    // dispatch per truck to run on its own thread
+    // create a list of task that will be dispatched on its own thread
+    var tasks: List[Task[Unit]] = List()
     for (truckId <- lowTruckRange to highTruckRange) {
-      Task {
+      tasks = tasks :+ Task {
         dispatchTruck(truckId.toString, countdownTimer)
-      }.runAsync
+      }
     }
-    // wait until config duration, do not want to close the shared kafka producer to soon
-    Await.result(Future {
-      while (!countdownTimer.isFinished) Thread.sleep(1000)
-    }, Duration(config.getDurationInMinutes, MINUTES))
+
+    // execute the task asynchronously and keep a list of cancelable futures
+    var futures: List[Future[Unit]] = List()
+    tasks.foreach(task => {
+      futures = futures :+ task.runAsync
+    })
+    // wait for all futures to complete
+    Await.result(Future.sequence(futures), Duration(config.getDurationInMinutes, TimeUnit.MINUTES))
   } catch {
     case NonFatal(all) => logger.error("Error:", all)
   } finally {
