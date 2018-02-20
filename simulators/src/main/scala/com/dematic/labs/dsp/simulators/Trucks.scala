@@ -74,7 +74,7 @@ object Trucks extends App {
     var tasks: List[Task[Unit]] = List()
     for (truckId <- lowTruckRange to highTruckRange) {
       tasks = tasks :+ Task {
-        dispatchTruck(truckId.toString, countdownTimer)
+        dispatchTruck(s"${config.getId}$truckId", countdownTimer)
       }
     }
 
