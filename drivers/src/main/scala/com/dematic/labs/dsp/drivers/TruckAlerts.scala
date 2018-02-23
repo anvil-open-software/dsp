@@ -1,9 +1,12 @@
 package com.dematic.labs.dsp.drivers
 
+import java.sql.Timestamp
+
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
+import com.dematic.labs.dsp.data.Utils.toTimeStamp
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
 import com.google.common.base.Strings
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{ForeachWriter, Row, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.types._
@@ -65,17 +68,35 @@ object TruckAlerts {
       // group by 1 hour and truck and find min/max and trigger an alert if condition is meet
       val alerts = channels.groupBy(window(channels.col("_timestamp"), "1 hours").
         as(Symbol("alert_time")), channels.col("truck")).
-        agg(min("value").as("min"), max("value").as("max")).
+        agg(min('value) as "min", max('value) as "max", collect_list('_timestamp) as "times", collect_list('value) as "values").
         where(col("max") - col("min") > 10)
 
-      // just write to the console
+      //todo: think about watermark
+
+      alerts.writeStream
+        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
+        .queryName("truckAlerts")
+        .outputMode("complete")
+        .foreach(new ForeachWriter[Row]() {
+          override def open(partitionId: Long, version: Long) = true
+
+          override def process(row: Row) {
+            println(row.toString())
+          }
+
+          override def close(errorOrNull: Throwable) {}
+
+        }).start
+
+
+    /*  // just write to the console
       alerts.writeStream
         .format("console")
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
         .queryName("truckAlerts")
         .outputMode("complete")
-        .start
+        .start*/
 
       // keep alive
       sparkSession.streams.awaitAnyTermination
