@@ -3,7 +3,7 @@ package com.dematic.labs.dsp.drivers
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
 import com.google.common.base.Strings
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{SparkSession, functions}
 import org.apache.spark.sql.functions.from_json
 import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.types._
@@ -56,16 +56,24 @@ object TruckAlerts {
 
       import sparkSession.implicits._
 
-      // convert to json and select all channels
+      // convert to json and select only channel 'T_motTemp_Lft'
       val channels = kafka.selectExpr("cast (value as string) as json").
-        select(from_json($"json", schema).as("channels")).select("channels.*")
+        select(from_json($"json", schema).as("channels")).
+        select("channels.*").
+        where("channel == 'T_motTemp_Lft'")
 
-      //2) just write to the console
-      channels.writeStream
+      // group by 1 hour and find min/max
+      val alerts = channels.groupBy(functions.window(channels.col("_timestamp"), "1 hours").
+        as(Symbol("alert_time")), channels.col("truck"), channels.col("channel")).
+        agg(functions.count("truck"), functions.min("value"), functions.max("value"))
+
+      // just write to the console
+      alerts.writeStream
         .format("console")
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
         .queryName("truckAlerts")
+        .outputMode("complete")
         .start
 
       // keep alive
