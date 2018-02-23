@@ -3,8 +3,8 @@ package com.dematic.labs.dsp.drivers
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
 import com.google.common.base.Strings
-import org.apache.spark.sql.{SparkSession, functions}
-import org.apache.spark.sql.functions.from_json
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.types._
 
@@ -62,10 +62,11 @@ object TruckAlerts {
         select("channels.*").
         where("channel == 'T_motTemp_Lft'")
 
-      // group by 1 hour and find min/max
-      val alerts = channels.groupBy(functions.window(channels.col("_timestamp"), "1 hours").
-        as(Symbol("alert_time")), channels.col("truck"), channels.col("channel")).
-        agg(functions.count("truck"), functions.min("value"), functions.max("value"))
+      // group by 1 hour and truck and find min/max and trigger an alert if condition is meet
+      val alerts = channels.groupBy(window(channels.col("_timestamp"), "1 hours").
+        as(Symbol("alert_time")), channels.col("truck")).
+        agg(min("value").as("min"), max("value").as("max")).
+        where(col("max") - col("min") > 10)
 
       // just write to the console
       alerts.writeStream
