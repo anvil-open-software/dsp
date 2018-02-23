@@ -61,7 +61,7 @@ object TruckAlerts {
 
       // convert to json and select only channel 'T_motTemp_Lft'
       val channels = kafka.selectExpr("cast (value as string) as json").
-        select(from_json($"json", schema).as("channels")).
+        select(from_json($"json", schema) as "channels").
         select("channels.*").
         where("channel == 'T_motTemp_Lft'")
 
@@ -89,14 +89,14 @@ object TruckAlerts {
         }).start
 
 
-    /*  // just write to the console
-      alerts.writeStream
-        .format("console")
-        .trigger(ProcessingTime(config.getSparkQueryTrigger))
-        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
-        .queryName("truckAlerts")
-        .outputMode("complete")
-        .start*/
+      /*  // just write to the console
+        alerts.writeStream
+          .format("console")
+          .trigger(ProcessingTime(config.getSparkQueryTrigger))
+          .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
+          .queryName("truckAlerts")
+          .outputMode("complete")
+          .start*/
 
       // keep alive
       sparkSession.streams.awaitAnyTermination
