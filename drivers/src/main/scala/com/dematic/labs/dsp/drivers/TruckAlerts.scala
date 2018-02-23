@@ -50,7 +50,7 @@ object TruckAlerts {
         StructField("truck", StringType, nullable = false),
         StructField("_timestamp", StringType, nullable = false),
         StructField("channel", StringType, nullable = false),
-        StructField("value", LongType, nullable = false),
+        StructField("value", DoubleType, nullable = false),
         StructField("unit", StringType, nullable = false)
       ))
 
@@ -62,11 +62,10 @@ object TruckAlerts {
 
       //2) just write to the console
       channels.writeStream
-        .format("memory")
+        .format("console")
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
         .queryName("truckAlerts")
-        .outputMode(config.getSparkOutputMode)
         .start
 
       // keep alive
