@@ -3,9 +3,10 @@ package com.dematic.labs.dsp.drivers
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
 import com.google.common.base.Strings
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{ForeachWriter, Row, SparkSession}
 
 object TruckAlerts {
   // should only be  used with testing
@@ -47,7 +48,7 @@ object TruckAlerts {
       // define the truck json schema
       val schema: StructType = StructType(Seq(
         StructField("truck", StringType, nullable = false),
-        StructField("_timestamp", StringType, nullable = false),
+        StructField("_timestamp", TimestampType, nullable = false),
         StructField("channel", StringType, nullable = false),
         StructField("value", DoubleType, nullable = false),
         StructField("unit", StringType, nullable = false)
@@ -62,38 +63,20 @@ object TruckAlerts {
         where("channel == 'T_motTemp_Lft'")
 
       // group by 1 hour and truck and find min/max and trigger an alert if condition is meet
-      val alerts = channels.groupBy(window(channels.col("_timestamp"), "1 hours").
-        as(Symbol("alert_time")), channels.col("truck")).
-        agg(min('value) as "min", max('value) as "max", collect_list('_timestamp) as "times",
-          collect_list('value) as "values").
-        where(col("max") - col("min") > 10)
+      val alerts = channels.
+        withWatermark("_timestamp", "5 minutes"). // only keep old data for 5 minutes for late updates
+        groupBy(window('_timestamp, "60 minutes") as "alert_time", 'truck).
+        agg(max('value) as "max", min('value) as "min", collect_list(struct('_timestamp, 'value)) as "values").
+        where('max - 'min > 10)
 
-      //todo: think about watermark
-
+      // just write to the console
       alerts.writeStream
+        .format("console")
+        .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
         .queryName("truckAlerts")
-        .outputMode("complete")
-        .foreach(new ForeachWriter[Row]() {
-          override def open(partitionId: Long, version: Long) = true
-
-          override def process(row: Row) {
-            println(row.toString())
-          }
-
-          override def close(errorOrNull: Throwable) {}
-
-        }).start
-
-
-      /*  // just write to the console
-        alerts.writeStream
-          .format("console")
-          .trigger(ProcessingTime(config.getSparkQueryTrigger))
-          .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
-          .queryName("truckAlerts")
-          .outputMode("complete")
-          .start*/
+        .outputMode("update")
+        .start
 
       // keep alive
       sparkSession.streams.awaitAnyTermination
