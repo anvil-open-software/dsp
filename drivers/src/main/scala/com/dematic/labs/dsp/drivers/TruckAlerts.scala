@@ -64,7 +64,7 @@ object TruckAlerts {
 
       // group by 1 hour and truck and find min/max and trigger an alert if condition is meet
       val alerts = channels.
-        withWatermark("_timestamp", "5 minutes"). // only keep old data for 5 minutes for late updates
+        withWatermark("_timestamp", "1 minutes"). // only keep old data for 1 minutes for late updates
         groupBy(window('_timestamp, "60 minutes") as "alert_time", 'truck).
         agg(max('value) as "max", min('value) as "min", collect_list(struct('_timestamp, 'value)) as "values").
         where('max - 'min > 10)
