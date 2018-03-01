@@ -9,6 +9,7 @@ import com.dematic.labs.dsp.simulators.configuration.TruckConfiguration
 import com.dematic.labs.toolkit_bigdata.simulators.CountdownTimer
 import com.google.common.util.concurrent.RateLimiter
 import monix.eval.Task
+import okhttp3.OkHttpClient
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.influxdb.dto.Query
 import org.influxdb.{InfluxDB, InfluxDBFactory}
@@ -24,8 +25,11 @@ object Trucks extends App {
 
   // load all the configuration
   private val config: TruckConfiguration = new TruckConfiguration.Builder().build
-  // create the connection to influxDb
-  private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword)
+
+  // create the connection to influxDb with more generous timeout instead fo 10 seconds
+  val builder = new OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS)
+                                          .connectTimeout(30, TimeUnit.SECONDS)
+  private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword,builder)
   // shared kafka producer, used for batching and compression
   private val properties: util.Map[String, AnyRef] = new util.HashMap[String, AnyRef]
   properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.getBootstrapServers)
