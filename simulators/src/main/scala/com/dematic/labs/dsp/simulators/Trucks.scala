@@ -28,7 +28,7 @@ object Trucks extends App {
 
   // create the connection to influxDb with more generous timeout instead of default 10 seconds
   val builder = new OkHttpClient.Builder().readTimeout(120, TimeUnit.SECONDS)
-                                          .connectTimeout(80, TimeUnit.SECONDS)
+                                          .connectTimeout(120, TimeUnit.SECONDS)
   private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword,builder)
   // shared kafka producer, used for batching and compression
   private val properties: util.Map[String, AnyRef] = new util.HashMap[String, AnyRef]
@@ -50,9 +50,13 @@ object Trucks extends App {
   import collection.JavaConversions._
 
   try {
+    val queryStartTime= System.currentTimeMillis()
     val qr = influxDB.query(new Query(s"SELECT time, value FROM T_motTemp_Lft where time > " +
       s"'${config.getPredicateDateRangeLow}' AND time < '${config.getPredicateDateRangeHigh}' order by ASC",
       config.getDatabase))
+    val queryExecutionTime= System.currentTimeMillis()-queryStartTime;
+    logger.info("Query took:"+ queryExecutionTime + " ms")
+
     qr.getResults foreach (it => {
       it.getSeries foreach (it => {
         timeSeries = timeSeries ++ it.getValues
@@ -62,8 +66,10 @@ object Trucks extends App {
     val lowTruckRange: Int = config.getTruckIdRangeLow
     val highTruckRange: Int = config.getTruckIdRangeHigh
     val numOfThreads = highTruckRange - lowTruckRange
+    logger.info("Requested truck range " + lowTruckRange + " to " + highTruckRange)
+
     // define the global scheduler and the num and max of threads, will be based on the number of trucks, this could
-    // cause thread starvation if to many trucks are defined, also, do not define less threads then the number of cores
+    // cause thread starvation if too many trucks are defined, also, do not define less threads then the number of cores
     if (Runtime.getRuntime.availableProcessors < numOfThreads) {
       System.setProperty("scala.concurrent.context.maxThreads", numOfThreads.toString)
       System.setProperty("scala.concurrent.context.numThreads", numOfThreads.toString)
