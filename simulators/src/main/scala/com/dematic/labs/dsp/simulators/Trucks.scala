@@ -55,7 +55,7 @@ object Trucks extends App {
       s"'${config.getPredicateDateRangeLow}' AND time < '${config.getPredicateDateRangeHigh}' order by ASC",
       config.getDatabase))
     val queryExecutionTime= System.currentTimeMillis()-queryStartTime;
-    logger.info("Query took:"+ queryExecutionTime + " ms")
+    logger.info("influxdb query time="+ queryExecutionTime + " ms, returning rows=" + qr.getResults.size())
 
     qr.getResults foreach (it => {
       it.getSeries foreach (it => {
