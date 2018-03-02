@@ -9,6 +9,7 @@ import com.dematic.labs.dsp.simulators.configuration.TruckConfiguration
 import com.dematic.labs.toolkit_bigdata.simulators.CountdownTimer
 import com.google.common.util.concurrent.RateLimiter
 import monix.eval.Task
+import okhttp3.OkHttpClient
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.influxdb.dto.Query
 import org.influxdb.{InfluxDB, InfluxDBFactory}
@@ -24,8 +25,11 @@ object Trucks extends App {
 
   // load all the configuration
   private val config: TruckConfiguration = new TruckConfiguration.Builder().build
-  // create the connection to influxDb
-  private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword)
+
+  // create the connection to influxDb with more generous timeout instead of default 10 seconds
+  val builder = new OkHttpClient.Builder().readTimeout(120, TimeUnit.SECONDS)
+                                          .connectTimeout(120, TimeUnit.SECONDS)
+  private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword,builder)
   // shared kafka producer, used for batching and compression
   private val properties: util.Map[String, AnyRef] = new util.HashMap[String, AnyRef]
   properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.getBootstrapServers)
@@ -46,9 +50,13 @@ object Trucks extends App {
   import collection.JavaConversions._
 
   try {
+    val queryStartTime= System.currentTimeMillis()
     val qr = influxDB.query(new Query(s"SELECT time, value FROM T_motTemp_Lft where time > " +
       s"'${config.getPredicateDateRangeLow}' AND time < '${config.getPredicateDateRangeHigh}' order by ASC",
       config.getDatabase))
+    val queryExecutionTime= System.currentTimeMillis()-queryStartTime;
+    logger.info("influxdb query time="+ queryExecutionTime + " ms, returning rows=" + qr.getResults.size())
+
     qr.getResults foreach (it => {
       it.getSeries foreach (it => {
         timeSeries = timeSeries ++ it.getValues
@@ -58,8 +66,10 @@ object Trucks extends App {
     val lowTruckRange: Int = config.getTruckIdRangeLow
     val highTruckRange: Int = config.getTruckIdRangeHigh
     val numOfThreads = highTruckRange - lowTruckRange
+    logger.info("Requested truck range " + lowTruckRange + " to " + highTruckRange)
+
     // define the global scheduler and the num and max of threads, will be based on the number of trucks, this could
-    // cause thread starvation if to many trucks are defined, also, do not define less threads then the number of cores
+    // cause thread starvation if too many trucks are defined, also, do not define less threads then the number of cores
     if (Runtime.getRuntime.availableProcessors < numOfThreads) {
       System.setProperty("scala.concurrent.context.maxThreads", numOfThreads.toString)
       System.setProperty("scala.concurrent.context.numThreads", numOfThreads.toString)
