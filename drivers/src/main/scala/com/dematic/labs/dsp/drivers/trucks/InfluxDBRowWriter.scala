@@ -11,15 +11,17 @@ import org.slf4j.{Logger, LoggerFactory}
 
 /**
   *  write batched points
+  *
+  *  might want to put in error handler- errors now just go to log
   */
 class InfluxDBRowWriter extends ForeachWriter[Row] {
 
   override def open(partitionId: Long, version: Long) = true
 
   override def process(row: Row) {
-    val timestamp: Timestamp= row.getAs[Timestamp]("_timestamp")
+    val timestamp = row.getAs[Long]("_timestamp")
     val point = Point.measurement(row.getAs[String]("channel"))
-      .time(timestamp.getTime, TimeUnit.MILLISECONDS)
+      .time(timestamp, TimeUnit.MILLISECONDS)
       .addField("value", row.getAs[Double]("value"))
       .tag("truck",  row.getAs[String]("truck") )
       .build();
