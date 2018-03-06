@@ -1,5 +1,7 @@
 package com.dematic.labs.dsp.drivers.trucks
 
+import java.sql.Timestamp
+
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
 import com.google.common.base.Strings
@@ -49,11 +51,11 @@ object TruckTopicToInfluxDB {
         .option("startingOffsets", config.getKafkaStartingOffsets)
         .option("maxOffsetsPerTrigger",config.getKafkaMaxOffsetsPerTrigger)
         .load
-
+     
       // define the truck json schema
       val schema: StructType = StructType(Seq(
         StructField("truck", StringType, nullable = false),
-        StructField("_timestamp", TimestampType, nullable = false),
+        StructField("_timestamp", LongType, nullable = false),
         StructField("channel", StringType, nullable = false),
         StructField("value", DoubleType, nullable = false),
         StructField("unit", StringType, nullable = false)
