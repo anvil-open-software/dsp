@@ -25,12 +25,6 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <scala.major.minor.version>2.11.11</scala.major.minor.version>
-
-        <!-- DO NOT MERGE TO MASTER!!! Just for skipping test-->
-        <skipTests>true</skipTests>
-        <skipITs>true</skipITs>
-        <!-- -->
-
     </properties>
 
     <dependencyManagement>

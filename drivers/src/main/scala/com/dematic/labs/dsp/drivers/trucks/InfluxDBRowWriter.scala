@@ -18,9 +18,9 @@ class InfluxDBRowWriter extends ForeachWriter[Row] {
 
   override def process(row: Row) {
     val timestamp: Timestamp= row.getAs[Timestamp]("_timestamp")
-    val point = Point.measurement(row.getAs[String]("T_motTemp_Lft"))
+    val point = Point.measurement(row.getAs[String]("channel"))
       .time(timestamp.getTime, TimeUnit.MILLISECONDS)
-      .addField("T_motTemp_Lft", row.getAs[Double]("value"))
+      .addField("value", row.getAs[Double]("value"))
       .tag("truck",  row.getAs[String]("truck") )
       .build();
     InfluxDB.influxDB.write(point)
