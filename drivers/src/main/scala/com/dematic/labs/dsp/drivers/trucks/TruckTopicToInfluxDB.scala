@@ -24,6 +24,9 @@ object TruckTopicToInfluxDB {
       injectedDriverConfiguration
     }
 
+    // exit out quickly if InfluxDB connection no good
+    InfluxDB.validateConnection();
+
     // create the spark session
     val builder: SparkSession.Builder = SparkSession.builder
     if (!Strings.isNullOrEmpty(config.getSparkMaster)) builder.master(config.getSparkMaster)

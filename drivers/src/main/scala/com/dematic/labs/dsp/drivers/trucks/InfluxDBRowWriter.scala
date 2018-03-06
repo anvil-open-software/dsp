@@ -7,6 +7,7 @@ import okhttp3.OkHttpClient
 import org.apache.spark.sql.{ForeachWriter, Row}
 import org.influxdb.{InfluxDB, InfluxDBFactory}
 import org.influxdb.dto.Point
+import org.slf4j.{Logger, LoggerFactory}
 
 /**
   *  write batched points
@@ -28,7 +29,8 @@ class InfluxDBRowWriter extends ForeachWriter[Row] {
   override def close(errorOrNull: Throwable) {}
 }
 
-private object InfluxDB {
+protected object InfluxDB {
+  val logger: Logger = LoggerFactory.getLogger("InfluxDB")
   // todo hook in parms if it works
   // create the connection to influxDb with more generous timeout instead of default 10 seconds
   val httpClientBuilder = new OkHttpClient.Builder()
@@ -36,5 +38,15 @@ private object InfluxDB {
 
   val influxDB: InfluxDB = InfluxDBFactory.connect("http://10.207.208.10:8086", "kafka", "kafka1234", httpClientBuilder)
     .enableBatch(5000, 3, TimeUnit.SECONDS);
-  influxDB.setDatabase("ccd_output")
+  influxDB.setDatabase(influx_database)
+
+  def validateConnection(): Unit = {
+    if (influxDB.databaseExists(influx_database)) {
+      logger.info("InfluxDB ready to use: " + influx_database);
+    } else {
+      throw new RuntimeException("Database does not exist " + influx_database)
+    }
+
+  }
+  val influx_database = "ccd_output";
 }

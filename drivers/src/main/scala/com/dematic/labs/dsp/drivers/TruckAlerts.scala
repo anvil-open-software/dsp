@@ -7,8 +7,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.types._
+import org.slf4j.{Logger, LoggerFactory}
 
 object TruckAlerts {
+  val logger: Logger = LoggerFactory.getLogger("InfluxDB")
+
   // should only be  used with testing
   private var injectedDriverConfiguration: DriverConfiguration = _
 
@@ -23,6 +26,7 @@ object TruckAlerts {
     } else {
       injectedDriverConfiguration
     }
+    logger.info(config.toString);
 
     // create the spark session
     val builder: SparkSession.Builder = SparkSession.builder
