@@ -42,14 +42,13 @@ object TruckTopicToInfluxDB {
     }
 
 
-
-    // create the connection to influxDb with more generous timeout instead of default 10 seconds
-    val httpClientBuilder = new OkHttpClient.Builder().readTimeout(120, TimeUnit.SECONDS)
-      .connectTimeout(120, TimeUnit.SECONDS)
-
     // todo hook in parms if it works
-    private val influxDB: InfluxDB = InfluxDBFactory.connect("http://10.207.208.10:8086", "kafka", "kafka", httpClientBuilder)
-    influxDB.setDatabase("ccd_test")
+    // create the connection to influxDb with more generous timeout instead of default 10 seconds
+    val httpClientBuilder = new OkHttpClient.Builder()
+                  .writeTimeout(120, TimeUnit.SECONDS).connectTimeout(120, TimeUnit.SECONDS)
+
+    val influxDB: InfluxDB = InfluxDBFactory.connect("http://10.207.208.10:8086", "kafka", "kafka1234", httpClientBuilder)
+    influxDB.setDatabase("ccd_output")
 
     // create the kafka input source
     try {
