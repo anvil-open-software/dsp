@@ -1,16 +1,17 @@
 package com.dematic.labs.dsp.drivers.trucks
 
+import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
 import com.google.common.base.Strings
-import com.typesafe.config.ConfigFactory
 import okhttp3.OkHttpClient
 import org.apache.spark.sql.{ForeachWriter, Row, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.streaming.Trigger._
+import org.influxdb.dto.Point
 import org.influxdb.{InfluxDB, InfluxDBFactory}
 
 object TruckTopicToInfluxDB {
@@ -47,8 +48,11 @@ object TruckTopicToInfluxDB {
     val httpClientBuilder = new OkHttpClient.Builder()
                   .writeTimeout(120, TimeUnit.SECONDS).connectTimeout(120, TimeUnit.SECONDS)
 
+
     val influxDB: InfluxDB = InfluxDBFactory.connect("http://10.207.208.10:8086", "kafka", "kafka1234", httpClientBuilder)
+                                            .enableBatch(5000, 3, TimeUnit.SECONDS);
     influxDB.setDatabase("ccd_output")
+
 
     // create the kafka input source
     try {
@@ -69,12 +73,14 @@ object TruckTopicToInfluxDB {
         StructField("unit", StringType, nullable = false)
       ))
 
+      import sparkSession.implicits._
+
       // convert to json and select only channel 'T_motTemp_Lft'
       val channels = kafka.selectExpr("cast (value as string) as json").
         select(from_json($"json", schema) as "channels").
         select("channels.*").
         where("channel == 'T_motTemp_Lft'")
-      val formatter = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'.'SSSX")
+
       val persister = channels.writeStream
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
@@ -83,13 +89,14 @@ object TruckTopicToInfluxDB {
           override def open(partitionId: Long, version: Long) = true
 
           override def process(row: Row) {
-            val batchRequestBody: scala.collection.mutable.StringBuilder = new scala.collection.mutable.StringBuilder()
+            val timestamp: Timestamp= row.getAs[Timestamp]("_timestamp")
+            val point = Point.measurement(row.getAs[String]("T_motTemp_Lft"))
+              .time(timestamp.getTime, TimeUnit.MILLISECONDS)
+              .addField("T_motTemp_Lft", row.getAs[Double]("value"))
+              .tag("truck",  row.getAs[String]("truck") )
+              .build();
+            influxDB.write(point)
 
-            val timestamp= row.getAs[String]("_timestamp");
-            val timeInNanoseconds = " " + (formatter.parse(timestamp).getTime * 1000000);
-            val line = row.getAs[String]("channel") + ",truck=" + row.getAs[String]("truck") + " value=" + row.getAs[Double]("value") + timeInNanoseconds
-            batchRequestBody.append(line + "\n")
-            influxDB.write(batchRequestBody.toString());
           }
           override def close(errorOrNull: Throwable) {}
           }).start
