@@ -117,9 +117,10 @@ object Trucks extends App {
     // keep pushing msgs to kafka until timer finishes
     do {
       val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[AnyRef]]
+      // instead of preserving original time, pump data for now ${data.get(0)}
+      val messageTime= System.currentTimeMillis();
       // create the json
-      val json =
-        s"""{"truck":"$truckId","_timestamp":"${data.get(0)}","channel":"T_motTemp_Lft","value":${data.get(1)},"unit":"C${"\u00b0"}"}"""
+      val json =  s"""{"truck":"$truckId","_timestamp":"$messageTime,"channel":"T_motTemp_Lft","value":${data.get(1)},"unit":"C${"\u00b0"}"}"""
       // acquire permit to send, limits to 1 msg a second
       rateLimiter.acquire()
       // send to kafka
