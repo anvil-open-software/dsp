@@ -23,7 +23,7 @@ class InfluxDBRowWriter extends ForeachWriter[Row] {
       .addField("value", row.getAs[Double]("value"))
       .tag("truck",  row.getAs[String]("truck") )
       .build();
-    InfluxDB.influxDB.write(point)
+    InfluxDB.influxDB.write(InfluxDB.influx_database, "autogen",point)
 
   }
   override def close(errorOrNull: Throwable) {}
@@ -31,14 +31,16 @@ class InfluxDBRowWriter extends ForeachWriter[Row] {
 
 protected object InfluxDB {
   val logger: Logger = LoggerFactory.getLogger("InfluxDB")
+  val influx_database = "ccd_output";
+
   // todo hook in parms if it works
   // create the connection to influxDb with more generous timeout instead of default 10 seconds
   val httpClientBuilder = new OkHttpClient.Builder()
     .writeTimeout(120, TimeUnit.SECONDS).connectTimeout(120, TimeUnit.SECONDS)
 
   val influxDB: InfluxDB = InfluxDBFactory.connect("http://10.207.208.10:8086", "kafka", "kafka1234", httpClientBuilder)
-    .enableBatch(5000, 3, TimeUnit.SECONDS);
-  influxDB.setDatabase(influx_database)
+    .enableBatch(5000, 3, TimeUnit.SECONDS)
+    .setDatabase(influx_database)
 
   def validateConnection(): Unit = {
     if (influxDB.databaseExists(influx_database)) {
@@ -48,5 +50,5 @@ protected object InfluxDB {
     }
 
   }
-  val influx_database = "ccd_output";
+
 }
