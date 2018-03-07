@@ -15,7 +15,7 @@ import org.slf4j.{Logger, LoggerFactory}
   *  might want to put in error handler- errors now just go to log
   */
 class InfluxDBRowWriter extends ForeachWriter[Row] {
-
+  val logger: Logger = LoggerFactory.getLogger("InfluxDBRowWriter")
   override def open(partitionId: Long, version: Long) = true
 
   override def process(row: Row) {
@@ -25,6 +25,7 @@ class InfluxDBRowWriter extends ForeachWriter[Row] {
       .addField("value", row.getAs[Double]("value"))
       .tag("truck",  row.getAs[String]("truck") )
       .build();
+    logger.info(point.toString);
     InfluxDB.influxDB.write(InfluxDB.influx_database, "autogen",point)
 
   }
@@ -41,8 +42,8 @@ protected object InfluxDB {
     .writeTimeout(120, TimeUnit.SECONDS).connectTimeout(120, TimeUnit.SECONDS)
 
   val influxDB: InfluxDB = InfluxDBFactory.connect("http://10.207.208.10:8086", "kafka", "kafka1234", httpClientBuilder)
-    .enableBatch(5000, 3, TimeUnit.SECONDS)
     .setDatabase(influx_database)
+  //  .enableBatch(5000, 3, TimeUnit.SECONDS)
 
   def validateConnection(): Unit = {
     if (influxDB.databaseExists(influx_database)) {
