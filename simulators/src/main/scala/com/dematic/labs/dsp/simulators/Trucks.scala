@@ -20,6 +20,11 @@ import scala.concurrent.{Await, Future}
 import scala.util.Random
 import scala.util.control.NonFatal
 
+/**
+  *
+  * To debug topic directly from kafka, use console consumer, i.e.:
+  * $KAFKA_HOME/bin/kafka-console-consumer.sh --bootstrap-server '10.207.222.11:9092,10.207.222.12:9092' --topic ccd_truck_temp
+  */
 object Trucks extends App {
   val logger: Logger = LoggerFactory.getLogger("Trucks")
 
@@ -117,10 +122,10 @@ object Trucks extends App {
     // keep pushing msgs to kafka until timer finishes
     do {
       val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[AnyRef]]
-      // instead of preserving original time, pump data for now ${data.get(0)}
+      // instead of preserving original time, use simulation time
       val messageTime= System.currentTimeMillis();
       // create the json
-      val json =  s"""{"truck":"$truckId","_timestamp":"$messageTime,"channel":"T_motTemp_Lft","value":${data.get(1)},"unit":"C${"\u00b0"}"}"""
+      val json =  s"""{"truck":$truckId,"_timestamp":"$messageTime,"channel":"T_motTemp_Lft","value":${data.get(1)}}"""
       // acquire permit to send, limits to 1 msg a second
       rateLimiter.acquire()
       // send to kafka
