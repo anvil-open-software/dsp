@@ -43,7 +43,7 @@ protected object InfluxDB {
 
   val influxDB: InfluxDB = InfluxDBFactory.connect("http://10.207.208.10:8086", "kafka", "kafka1234", httpClientBuilder)
     .setDatabase(influx_database)
-  //  .enableBatch(5000, 3, TimeUnit.SECONDS)
+    .enableBatch(5000, 3, TimeUnit.SECONDS)
 
   def validateConnection(): Unit = {
     if (influxDB.databaseExists(influx_database)) {
