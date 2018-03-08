@@ -125,7 +125,8 @@ object Trucks extends App {
       // instead of preserving original time, use simulation time
       val messageTime= System.currentTimeMillis();
       // create the json
-      val json =  s"""{"truck":$truckId,"_timestamp":$messageTime,"channel":"T_motTemp_Lft","value":${data.get(1)}}"""
+      val json =
+        s"""{"truck":"$truckId","_timestamp":"${data.get(0)}","channel":"T_motTemp_Lft","value":${data.get(1)},"unit":"C${"\u00b0"}"}"""
       // acquire permit to send, limits to 1 msg a second
       rateLimiter.acquire()
       // send to kafka
