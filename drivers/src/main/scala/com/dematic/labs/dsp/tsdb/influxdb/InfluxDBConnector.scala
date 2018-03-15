@@ -25,10 +25,16 @@ object InfluxDBConnector {
 
     val influxDB: InfluxDB = InfluxDBFactory.connect(
                                config.getConfigString(INFLUXDB_URL),
-                               config.getConfigString("influxdb.user"),
+                               config.getConfigString("influxdb.username"),
                                config.getConfigString("influxdb.password"), httpClientBuilder)
-      .setDatabase(influx_database)
-      .enableBatch(5000, 3, TimeUnit.SECONDS)
+      .setDatabase(influx_database);
+    val batch_count: Long = config.getConfigLong("influxdb.batch");
+    if (batch_count != null) {
+      influxDB.enableBatch(batch_count.toInt,
+                             config.getConfigLong("influxdb.batch.flush.duration.seconds").toInt,
+                             TimeUnit.SECONDS)
+    }
+
 
     if (influxDB.databaseExists(influx_database)) {
       logger.info("InfluxDB ready to use: " + influx_database);
