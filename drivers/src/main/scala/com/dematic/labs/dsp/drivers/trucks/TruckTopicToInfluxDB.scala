@@ -1,15 +1,21 @@
 package com.dematic.labs.dsp.drivers.trucks
 
-import java.sql.Timestamp
+import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
+import com.dematic.labs.dsp.tsdb.influxdb.InfluxDBConnector
 import com.google.common.base.Strings
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{ForeachWriter, Row, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.streaming.Trigger._
+import org.influxdb.dto.Point
+import org.slf4j.{Logger, LoggerFactory}
 
+/**
+  * Puts temp messages from kakfa topic to influxdb
+  */
 object TruckTopicToInfluxDB {
   // should only be  used with testing
   private var injectedDriverConfiguration: DriverConfiguration = _
@@ -26,8 +32,7 @@ object TruckTopicToInfluxDB {
       injectedDriverConfiguration
     }
 
-    // exit out quickly if InfluxDB connection no good
-    InfluxDB.validateConnection();
+
 
     // create the spark session
     val builder: SparkSession.Builder = SparkSession.builder
@@ -40,8 +45,8 @@ object TruckTopicToInfluxDB {
       sparkSession.streams.addListener(new PrometheusStreamingQueryListener(sparkSession.sparkContext.getConf,
         config.getDriverAppName))
     }
-
-
+    lazy val influxDB = InfluxDBConnector.initializeConnection(config);
+    // note influx db connector is not serializable here
     // create the kafka input source
     try {
       val kafka = sparkSession.readStream
@@ -49,16 +54,15 @@ object TruckTopicToInfluxDB {
         .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
         .option(config.getKafkaSubscribe, config.getKafkaTopics)
         .option("startingOffsets", config.getKafkaStartingOffsets)
-        .option("maxOffsetsPerTrigger",config.getKafkaMaxOffsetsPerTrigger)
+        .option("maxOffsetsPerTrigger", config.getKafkaMaxOffsetsPerTrigger)
         .load
-     
+
       // define the truck json schema
       val schema: StructType = StructType(Seq(
         StructField("truck", StringType, nullable = false),
         StructField("_timestamp", LongType, nullable = false),
         StructField("channel", StringType, nullable = false),
-        StructField("value", DoubleType, nullable = false),
-        StructField("unit", StringType, nullable = false)
+        StructField("value", DoubleType, nullable = false)
       ))
 
       import sparkSession.implicits._
@@ -69,11 +73,25 @@ object TruckTopicToInfluxDB {
         select("channels.*").
         where("channel == 'T_motTemp_Lft'")
 
-      val persister = channels.writeStream
+      channels.writeStream
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
         .queryName("truckAlerts")
-        .foreach(new InfluxDBRowWriter())
+        .foreach(new ForeachWriter[Row] {
+          override def process(row: Row) {
+            val timestamp = row.getAs[Long]("_timestamp")
+            val point = Point.measurement(row.getAs[String]("channel"))
+              .time(timestamp, TimeUnit.MILLISECONDS)
+              .addField("value", row.getAs[Double]("value"))
+              .tag("truck", row.getAs[String]("truck"))
+              .build()
+            influxDB.write(config.getConfigString(InfluxDBConnector.INFLUX_DATABASE), "autogen", point)
+          }
+
+          override def open(partitionId: Long, version: Long) = true
+
+          override def close(errorOrNull: Throwable) {}
+        })
         .start
 
       // keep alive
