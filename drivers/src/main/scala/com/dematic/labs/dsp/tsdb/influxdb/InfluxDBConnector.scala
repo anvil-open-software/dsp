@@ -13,7 +13,10 @@ import org.slf4j.{Logger, LoggerFactory}
 object InfluxDBConnector {
   val INFLUXDB_DATABASE: String = "influxdb.database"
   val INFLUXDB_URL: String = "influxdb.url"
+  val INFLUXDB_BATCH_COUNT: String = "influxdb.batch.count"
+  val INFLUXDB_BATCH_FLUSH_SECONDS: String = "influxdb.batch.flush.duration.seconds"
   val INFLUXDB_RETENTION_POLICY: String = "autogen"
+
   val logger: Logger = LoggerFactory.getLogger("InfluxDBConnector")
 
   def initializeConnection(config: DriverConfiguration): InfluxDB = {
@@ -28,10 +31,10 @@ object InfluxDBConnector {
                                config.getConfigString("influxdb.username"),
                                config.getConfigString("influxdb.password"), httpClientBuilder)
       .setDatabase(influx_database);
-    val batch_count: Long = config.getConfigLong("influxdb.batch");
+    def batch_count = config.getConfigNumber(INFLUXDB_BATCH_COUNT);
     if (batch_count != null) {
-      influxDB.enableBatch(batch_count.toInt,
-                             config.getConfigLong("influxdb.batch.flush.duration.seconds").toInt,
+      influxDB.enableBatch(batch_count.intValue(),
+                             config.getConfigNumber(INFLUXDB_BATCH_FLUSH_SECONDS).intValue(),
                              TimeUnit.SECONDS)
     }
 

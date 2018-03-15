@@ -2,6 +2,7 @@ package com.dematic.labs.dsp.drivers.configuration;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import scala.Int;
 
 import java.io.File;
 import java.io.Serializable;
@@ -145,8 +146,8 @@ public abstract class DriverConfiguration implements Serializable {
         return config.getString(inKey);
     }
 
-    public Long getConfigLong(String inKey) {
-        return config.getLong(inKey);
+    public Number getConfigNumber(String inKey) {
+        return config.getNumber(inKey);
     }
 
     public String getDriverAppName() {
