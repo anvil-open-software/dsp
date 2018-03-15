@@ -132,7 +132,7 @@ object Trucks extends App {
       val zonedDateTimeUtc = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime));
       // create the json
       val json =
-        s"""{"truck":"$truckId","_timestamp":$zonedDateTimeUtc,"channel":"T_motTemp_Lft","value":${data.get(1)}}"""
+        s"""{"truck":"$truckId","_timestamp":"$zonedDateTimeUtc","channel":"T_motTemp_Lft","value":${data.get(1)}}"""
       // acquire permit to send, limits to 1 msg a second
       rateLimiter.acquire()
       // send to kafka
