@@ -1,6 +1,8 @@
 package com.dematic.labs.dsp.simulators
 
 import java.nio.charset.Charset
+import java.time.Instant
+import java.time.format.DateTimeFormatter
 import java.util
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeUnit.MINUTES
@@ -52,6 +54,8 @@ object Trucks extends App {
   private val producer: KafkaProducer[String, AnyRef] = new KafkaProducer[String, AnyRef](properties)
   private var timeSeries: List[AnyRef] = List()
 
+  var dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
+
   import collection.JavaConversions._
 
   try {
@@ -59,7 +63,7 @@ object Trucks extends App {
     val qr = influxDB.query(new Query(s"SELECT time, value FROM T_motTemp_Lft where time > " +
       s"'${config.getPredicateDateRangeLow}' AND time < '${config.getPredicateDateRangeHigh}' order by ASC",
       config.getDatabase))
-    val queryExecutionTime= System.currentTimeMillis()-queryStartTime;
+    val queryExecutionTime= System.currentTimeMillis()-queryStartTime
     logger.info("influxdb query time="+ queryExecutionTime + " ms, returning rows=" + qr.getResults.size())
 
     qr.getResults foreach (it => {
@@ -124,9 +128,11 @@ object Trucks extends App {
       val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[AnyRef]]
       // instead of preserving original time, use simulation time
       val messageTime= System.currentTimeMillis();
+      //instant: java.time.Instant = 2017-02-13T12:14:20.666Z
+      val zonedDateTimeUtc = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime));
       // create the json
       val json =
-        s"""{"truck":"$truckId","_timestamp":$messageTime,"channel":"T_motTemp_Lft","value":${data.get(1)}}"""
+        s"""{"truck":"$truckId","_timestamp":$zonedDateTimeUtc,"channel":"T_motTemp_Lft","value":${data.get(1)}}"""
       // acquire permit to send, limits to 1 msg a second
       rateLimiter.acquire()
       // send to kafka

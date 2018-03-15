@@ -31,7 +31,7 @@ class DriverConfigurationSuite extends FunSuite {
     val uri = getClass.getResource("/truckToInfluxDB.conf").toURI
     val config = new DriverUnitTestConfiguration.Builder(Paths.get(uri).toFile).build
     assert(config.getConfigString(InfluxDBConnector.INFLUXDB_DATABASE) === "truckConfigTest")
-    assert(config.getConfigNumber(InfluxDBConnector.INFLUXDB_BATCH) === 5101)
+    assert(config.getConfigNumber(InfluxDBConnector.INFLUXDB_BATCH_COUNT) === 5101)
     assert(config.getConfigNumber(InfluxDBConnector.INFLUXDB_BATCH_FLUSH_SECONDS) === 2)
 
   }

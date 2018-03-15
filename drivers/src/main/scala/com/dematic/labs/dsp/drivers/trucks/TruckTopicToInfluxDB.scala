@@ -1,5 +1,6 @@
 package com.dematic.labs.dsp.drivers.trucks
 
+import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
@@ -60,7 +61,7 @@ object TruckTopicToInfluxDB {
       // define the truck json schema
       val schema: StructType = StructType(Seq(
         StructField("truck", StringType, nullable = false),
-        StructField("_timestamp", LongType, nullable = false),
+        StructField("_timestamp", TimestampType, nullable = false),
         StructField("channel", StringType, nullable = false),
         StructField("value", DoubleType, nullable = false)
       ))
@@ -79,9 +80,9 @@ object TruckTopicToInfluxDB {
         .queryName("truckAlerts")
         .foreach(new ForeachWriter[Row] {
           override def process(row: Row) {
-            val timestamp = row.getAs[Long]("_timestamp")
+            val timestamp = row.getAs[Timestamp]("_timestamp")
             val point = Point.measurement(row.getAs[String]("channel"))
-              .time(timestamp, TimeUnit.MILLISECONDS)
+              .time(timestamp.getTime, TimeUnit.MILLISECONDS)
               .addField("value", row.getAs[Double]("value"))
               .tag("truck", row.getAs[String]("truck"))
               .build()
