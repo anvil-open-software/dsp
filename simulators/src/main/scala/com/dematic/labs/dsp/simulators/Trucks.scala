@@ -28,8 +28,9 @@ object Trucks extends App {
 
   // create the connection to influxDb with more generous timeout instead of default 10 seconds
   val builder = new OkHttpClient.Builder().readTimeout(120, TimeUnit.SECONDS)
-                                          .connectTimeout(120, TimeUnit.SECONDS)
-  private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword,builder)
+    .connectTimeout(120, TimeUnit.SECONDS)
+  private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword,
+    builder)
   // shared kafka producer, used for batching and compression
   private val properties: util.Map[String, AnyRef] = new util.HashMap[String, AnyRef]
   properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.getBootstrapServers)
@@ -50,12 +51,13 @@ object Trucks extends App {
   import collection.JavaConversions._
 
   try {
-    val queryStartTime= System.currentTimeMillis()
+    val queryStartTime = System.currentTimeMillis()
     val qr = influxDB.query(new Query(s"SELECT time, value FROM T_motTemp_Lft where time > " +
       s"'${config.getPredicateDateRangeLow}' AND time < '${config.getPredicateDateRangeHigh}' order by ASC",
       config.getDatabase))
-    val queryExecutionTime= System.currentTimeMillis()-queryStartTime;
-    logger.info("influxdb query time="+ queryExecutionTime + " ms, returning rows=" + qr.getResults.size())
+
+    val queryExecutionTime = System.currentTimeMillis() - queryStartTime
+    logger.info("influxdb query time=" + queryExecutionTime + " ms, returning rows=" + qr.getResults.size())
 
     qr.getResults foreach (it => {
       it.getSeries foreach (it => {
