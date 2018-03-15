@@ -32,8 +32,6 @@ object TruckTopicToInfluxDB {
       injectedDriverConfiguration
     }
 
-
-
     // create the spark session
     val builder: SparkSession.Builder = SparkSession.builder
     if (!Strings.isNullOrEmpty(config.getSparkMaster)) builder.master(config.getSparkMaster)
@@ -45,8 +43,10 @@ object TruckTopicToInfluxDB {
       sparkSession.streams.addListener(new PrometheusStreamingQueryListener(sparkSession.sparkContext.getConf,
         config.getDriverAppName))
     }
-    lazy val influxDB = InfluxDBConnector.initializeConnection(config);
-    // note influx db connector is not serializable here
+
+    // note influx db connector is not serializable and lazy val declaration ensures one per jvm, executor
+    lazy val influxDB = InfluxDBConnector.initializeConnection(config)
+
     // create the kafka input source
     try {
       val kafka = sparkSession.readStream
@@ -85,7 +85,9 @@ object TruckTopicToInfluxDB {
               .addField("value", row.getAs[Double]("value"))
               .tag("truck", row.getAs[String]("truck"))
               .build()
-            influxDB.write(config.getConfigString(InfluxDBConnector.INFLUX_DATABASE), "autogen", point)
+            influxDB.write(
+              config.getConfigString(InfluxDBConnector.INFLUXDB_DATABASE),
+              InfluxDBConnector.INFLUXDB_RETENTION_POLICY, point)
           }
 
           override def open(partitionId: Long, version: Long) = true
