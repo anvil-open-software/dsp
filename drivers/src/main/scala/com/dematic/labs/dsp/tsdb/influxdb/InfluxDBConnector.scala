@@ -11,7 +11,8 @@ import org.slf4j.{Logger, LoggerFactory}
   *
   */
 object InfluxDBConnector {
-  val INFLUX_DATABASE: String = "influx.database"
+  val INFLUX_DATABASE: String = "influxdb.database"
+  val INFLUXDB_URL: String = "influxdb.url"
 
   val logger: Logger = LoggerFactory.getLogger("InfluxDBConnector")
 
@@ -22,7 +23,7 @@ object InfluxDBConnector {
     val httpClientBuilder = new OkHttpClient.Builder()
       .writeTimeout(120, TimeUnit.SECONDS).connectTimeout(120, TimeUnit.SECONDS)
 
-    val influxDB: InfluxDB = InfluxDBFactory.connect("influxdb.url", config.getConfigString("influxdb.database"),
+    val influxDB: InfluxDB = InfluxDBFactory.connect(INFLUXDB_URL, config.getConfigString(INFLUX_DATABASE),
                                  config.getConfigString("influxdb.password"), httpClientBuilder)
       .setDatabase(influx_database)
       .enableBatch(5000, 3, TimeUnit.SECONDS)
