@@ -36,8 +36,8 @@ object Trucks extends App {
   // create the connection to influxDb with more generous timeout instead of default 10 seconds
   val builder = new OkHttpClient.Builder().readTimeout(120, TimeUnit.SECONDS)
     .connectTimeout(120, TimeUnit.SECONDS)
-  private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword,
-    builder)
+  private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl,
+    config.getUsername, config.getPassword, builder)
   // shared kafka producer, used for batching and compression
   private val properties: util.Map[String, AnyRef] = new util.HashMap[String, AnyRef]
   properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.getBootstrapServers)
@@ -129,12 +129,11 @@ object Trucks extends App {
     do {
       val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[AnyRef]]
       // instead of preserving original time, use simulation time
-      val messageTime= System.currentTimeMillis();
-      //instant: java.time.Instant = 2017-02-13T12:14:20.666Z
-      val zonedDateTimeUtc = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime));
+      val messageTime = System.currentTimeMillis();
+      // java.time.Instant = 2017-02-13T12:14:20.666Z
+      val isoDateTime = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime));
       // create the json
-      val json =
-        s"""{"truck":"$truckId","_timestamp":"$zonedDateTimeUtc","channel":"T_motTemp_Lft","value":${data.get(1)}}"""
+      val json = s"""{"truck":"$truckId","_timestamp":"$isoDateTime","channel":"T_motTemp_Lft","value":${data.get(1)}}"""
       // acquire permit to send, limits to 1 msg a second
       rateLimiter.acquire()
       // send to kafka
