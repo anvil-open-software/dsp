@@ -1,18 +1,14 @@
 package com.dematic.labs.dsp.drivers.trucks
 
-import java.sql.Timestamp
-import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
 import com.dematic.labs.dsp.tsdb.influxdb.InfluxDBConnector
 import com.google.common.base.Strings
-import org.apache.spark.sql.{ForeachWriter, Row, SparkSession}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types._
 import org.apache.spark.sql.streaming.Trigger._
-import org.influxdb.dto.Point
-import org.slf4j.{Logger, LoggerFactory}
+import org.apache.spark.sql.types._
 
 /**
   * Puts temp messages from kakfa topic to influxdb
@@ -71,9 +67,10 @@ object TruckTopicToInfluxDB {
         select("channels.*").
         where("channel == 'T_motTemp_Lft'")
 
-      // note influx db connector is not serializable and lazy val declaration ensures one per jvm, executor
-
-      lazy val influxDBSink = new InfluxDBSink(config);
+      // note influx db connector is not serializable and we must have only one influxDB per jvm, executor
+      // however lazy val appears to be excuted for each task
+      @transient lazy val influxDB = InfluxDBConnector.initializeConnection(config)
+      @transient lazy val influxDBSink = new InfluxDBSink(config,influxDB);
       channels.writeStream
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)

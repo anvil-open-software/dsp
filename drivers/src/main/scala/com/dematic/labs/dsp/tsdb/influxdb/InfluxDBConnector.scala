@@ -3,7 +3,6 @@ package com.dematic.labs.dsp.tsdb.influxdb
 import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.dsp.drivers.configuration.DriverConfiguration
-import com.typesafe.config.ConfigFactory
 import okhttp3.OkHttpClient
 import org.influxdb.{InfluxDB, InfluxDBFactory}
 import org.slf4j.{Logger, LoggerFactory}
