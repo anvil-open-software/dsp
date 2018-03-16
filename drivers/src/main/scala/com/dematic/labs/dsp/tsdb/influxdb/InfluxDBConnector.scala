@@ -3,6 +3,7 @@ package com.dematic.labs.dsp.tsdb.influxdb
 import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.dsp.drivers.configuration.DriverConfiguration
+import com.typesafe.config.ConfigFactory
 import okhttp3.OkHttpClient
 import org.influxdb.{InfluxDB, InfluxDBFactory}
 import org.slf4j.{Logger, LoggerFactory}
@@ -30,7 +31,7 @@ object InfluxDBConnector {
                                config.getConfigString(INFLUXDB_URL),
                                config.getConfigString("influxdb.username"),
                                config.getConfigString("influxdb.password"), httpClientBuilder)
-      .setDatabase(influx_database);
+       .setDatabase(influx_database);
     def batch_count = config.getConfigNumber(INFLUXDB_BATCH_COUNT);
     if (batch_count != null) {
       influxDB.enableBatch(batch_count.intValue(),

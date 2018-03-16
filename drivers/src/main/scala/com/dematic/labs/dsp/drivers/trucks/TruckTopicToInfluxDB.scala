@@ -45,9 +45,6 @@ object TruckTopicToInfluxDB {
         config.getDriverAppName))
     }
 
-    // note influx db connector is not serializable and lazy val declaration ensures one per jvm, executor
-    lazy val influxDB = InfluxDBConnector.initializeConnection(config)
-
     // create the kafka input source
     try {
       val kafka = sparkSession.readStream
@@ -74,27 +71,14 @@ object TruckTopicToInfluxDB {
         select("channels.*").
         where("channel == 'T_motTemp_Lft'")
 
+      // note influx db connector is not serializable and lazy val declaration ensures one per jvm, executor
+
+      lazy val influxDBSink = new InfluxDBSink(config);
       channels.writeStream
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
         .queryName("truckAlerts")
-        .foreach(new ForeachWriter[Row] {
-          override def process(row: Row) {
-            val timestamp = row.getAs[Timestamp]("_timestamp")
-            val point = Point.measurement(row.getAs[String]("channel"))
-              .time(timestamp.getTime, TimeUnit.MILLISECONDS)
-              .addField("value", row.getAs[Double]("value"))
-              .tag("truck", row.getAs[String]("truck"))
-              .build()
-            influxDB.write(
-              config.getConfigString(InfluxDBConnector.INFLUXDB_DATABASE),
-              InfluxDBConnector.INFLUXDB_RETENTION_POLICY, point)
-          }
-
-          override def open(partitionId: Long, version: Long) = true
-
-          override def close(errorOrNull: Throwable) {}
-        })
+        .foreach(influxDBSink)
         .start
 
       // keep alive
@@ -103,3 +87,4 @@ object TruckTopicToInfluxDB {
       sparkSession.close
   }
 }
+
