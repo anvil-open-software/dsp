@@ -42,9 +42,8 @@ object TruckTopicToInfluxDB {
     }
 
     // note influx db connector is not serializable and we must have only one influxDB per jvm, executor
-    // however lazy val appears to be excuted for each task
-    lazy val influxDB = InfluxDBConnector.initializeConnection(config)
-    lazy val influxDBSink = new InfluxDBSink(config,influxDB);
+
+    lazy val influxDBSink = new InfluxDBSink(config);
 
     // create the kafka input source
     try {

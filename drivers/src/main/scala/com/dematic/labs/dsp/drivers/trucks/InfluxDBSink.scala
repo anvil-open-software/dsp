@@ -10,9 +10,9 @@ import org.influxdb.InfluxDB
 import org.influxdb.dto.Point
 
 /**
-  * This is not a generic sink since the write format depends on truck message
+  * Converts truck json into influx request. This is not a generic sink since the write format depends on truck message.
   */
-class InfluxDBSink(config:DriverConfiguration, influxDB:InfluxDB) extends ForeachWriter[Row] {
+class InfluxDBSink(config:DriverConfiguration) extends ForeachWriter[Row] {
 
     override def process(row: Row) {
       val timestamp = row.getAs[Timestamp]("_timestamp")
@@ -21,13 +21,12 @@ class InfluxDBSink(config:DriverConfiguration, influxDB:InfluxDB) extends Foreac
         .addField("value", row.getAs[Double]("value"))
         .tag("truck", row.getAs[String]("truck"))
         .build()
-      influxDB.write( config.getConfigString(InfluxDBConnector.INFLUXDB_DATABASE),
+      InfluxDBConnector.getInfluxDB.write( config.getConfigString(InfluxDBConnector.INFLUXDB_DATABASE),
         InfluxDBConnector.INFLUXDB_RETENTION_POLICY, point)
     }
 
     override def open(partitionId: Long, version: Long) = true
 
     override def close(errorOrNull: Throwable): Unit = {
-      //  influxDB.close()
     }
   }
