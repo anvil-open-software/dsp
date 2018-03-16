@@ -41,6 +41,11 @@ object TruckTopicToInfluxDB {
         config.getDriverAppName))
     }
 
+    // note influx db connector is not serializable and we must have only one influxDB per jvm, executor
+    // however lazy val appears to be excuted for each task
+    @transient lazy val influxDB = InfluxDBConnector.initializeConnection(config)
+    @transient lazy val influxDBSink = new InfluxDBSink(config,influxDB);
+
     // create the kafka input source
     try {
       val kafka = sparkSession.readStream
@@ -67,10 +72,6 @@ object TruckTopicToInfluxDB {
         select("channels.*").
         where("channel == 'T_motTemp_Lft'")
 
-      // note influx db connector is not serializable and we must have only one influxDB per jvm, executor
-      // however lazy val appears to be excuted for each task
-      @transient lazy val influxDB = InfluxDBConnector.initializeConnection(config)
-      @transient lazy val influxDBSink = new InfluxDBSink(config,influxDB);
       channels.writeStream
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
