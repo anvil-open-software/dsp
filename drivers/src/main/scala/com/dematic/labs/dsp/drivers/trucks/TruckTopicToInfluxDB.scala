@@ -43,8 +43,6 @@ object TruckTopicToInfluxDB {
 
     // note influx db connector is not serializable and we must have only one influxDB per jvm, executor
 
-    lazy val influxDBSink = new InfluxDBSink(config);
-
     // create the kafka input source
     try {
       val kafka = sparkSession.readStream
@@ -70,6 +68,8 @@ object TruckTopicToInfluxDB {
         select(from_json($"json", schema) as "channels").
         select("channels.*").
         where("channel == 'T_motTemp_Lft'")
+
+      lazy val influxDBSink = new InfluxDBSink(config);
 
       channels.writeStream
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
