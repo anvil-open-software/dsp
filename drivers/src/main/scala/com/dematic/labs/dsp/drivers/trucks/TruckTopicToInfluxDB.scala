@@ -3,7 +3,6 @@ package com.dematic.labs.dsp.drivers.trucks
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
-import com.dematic.labs.dsp.tsdb.influxdb.InfluxDBConnector
 import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._

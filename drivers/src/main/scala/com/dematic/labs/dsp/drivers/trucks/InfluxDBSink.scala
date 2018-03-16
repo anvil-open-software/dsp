@@ -6,7 +6,6 @@ import java.util.concurrent.TimeUnit
 import com.dematic.labs.dsp.drivers.configuration.DriverConfiguration
 import com.dematic.labs.dsp.tsdb.influxdb.InfluxDBConnector
 import org.apache.spark.sql.{ForeachWriter, Row}
-import org.influxdb.InfluxDB
 import org.influxdb.dto.Point
 
 /**
