@@ -4,7 +4,7 @@ import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.dsp.drivers.configuration.DriverConfiguration
-import com.dematic.labs.dsp.tsdb.influxdb.InfluxDBConnector
+import com.dematic.labs.dsp.tsdb.influxdb.{InfluxDBConnector,InfluxDBConsts}
 import org.apache.spark.sql.{ForeachWriter, Row}
 import org.influxdb.dto.Point
 
@@ -20,8 +20,8 @@ class InfluxDBSink(config:DriverConfiguration) extends ForeachWriter[Row] {
         .addField("value", row.getAs[Double]("value"))
         .tag("truck", row.getAs[String]("truck"))
         .build()
-      InfluxDBConnector.getInfluxDB.write( config.getConfigString(InfluxDBConnector.INFLUXDB_DATABASE),
-        InfluxDBConnector.INFLUXDB_RETENTION_POLICY, point)
+      InfluxDBConnector.getInfluxDB.write( config.getConfigString(InfluxDBConsts.INFLUXDB_DATABASE),
+        InfluxDBConsts.INFLUXDB_RETENTION_POLICY, point)
     }
 
     override def open(partitionId: Long, version: Long) = true
