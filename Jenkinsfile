@@ -6,5 +6,5 @@ buildWithMaven() {
     skipSonar = true
 
 // DO NOT MERGE TO MASTER, convenience for testing
-    skipTests = false
+    skipTests = true
 }
