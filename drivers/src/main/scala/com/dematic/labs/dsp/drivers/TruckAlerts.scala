@@ -37,7 +37,7 @@ object TruckAlerts {
         config.getDriverAppName))
     }
 
-    var increasedTemperature = new IncreasedTemperature(10)
+    val increasingTemperatureAlert = new IncreasingTemperatureAlert(10) // todo: make configurable
     // create the kafka input source
     try {
       val kafka = sparkSession.readStream
@@ -68,8 +68,8 @@ object TruckAlerts {
       val alerts = channels.
         withWatermark("_timestamp", "1 minutes"). // only keep old data for 1 minutes for late updates
         groupBy(window('_timestamp, "60 minutes") as "alert_time", 'truck).
-        agg(increasedTemperature('_timestamp, 'value))
-
+     //   agg(collect_list(struct('_timestamp, 'value)))
+       agg(increasingTemperatureAlert('_timestamp, 'value))
 
       alerts.printSchema()
 
@@ -99,7 +99,7 @@ object TruckAlerts {
   }
 }
 
-class IncreasedTemperature(threshold: Int) extends UserDefinedAggregateFunction {
+class IncreasingTemperatureAlert(threshold: Int) extends UserDefinedAggregateFunction {
   // This is the input fields for your aggregate function.
   override def inputSchema: org.apache.spark.sql.types.StructType =
     StructType(
@@ -140,33 +140,44 @@ class IncreasedTemperature(threshold: Int) extends UserDefinedAggregateFunction 
 
   // This is the initial value for your buffer schema.
   override def initialize(buffer: MutableAggregationBuffer): Unit = {
-    //   buffer(0) = null
+    buffer(0) = null // min
+    buffer(1) = Nil // empty list of t/v
   }
 
   // This is how to update your buffer schema given an input.
   override def update(buffer: MutableAggregationBuffer, input: Row): Unit = {
-    /*  // keep the minimum
-      buffer(0) =
-        if (buffer.isNullAt(0)) input.getAs[Double](0)
-        else if (input.getAs[Double](0) > buffer.getAs[Double](0)) buffer.getAs[Double](0)
-        else input.getAs[Double](0)*/
+    // update the min
+    //todo: think about order of data
+    updateMin(buffer, input.getAs[Double](0))
+    // update the buffer
   }
 
   // This is how to merge two objects with the bufferSchema type.
   override def merge(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = {
-    /* if (buffer1(0) == null) {
-       buffer1(0) = buffer2(0)
-     }
-
-     if (buffer1(0) != null) {
-       buffer1(0) = if (buffer1.getAs[Double](0) > buffer2.getAs[Double](0)) buffer2.getAs[Double](0) else buffer1.getAs[Double](0)
-
-     }*/
+    mergeMin(buffer1, buffer2)
   }
 
   // This is where you output the final value, given the final value of your bufferSchema.
   override def evaluate(buffer: Row): Any = {
     buffer(0)
+  }
+
+  private def updateMin(buffer: MutableAggregationBuffer, min: Double): Unit = {
+    // keep the minimum
+    buffer(0) =
+      if (buffer.isNullAt(0)) min
+      else if (min > buffer.getAs[Double](0)) buffer.getAs[Double](0)
+      else min
+  }
+
+  private def mergeMin(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = {
+    if (buffer1(0) == null) {
+      buffer1(0) = buffer2(0)
+    }
+    if (buffer1(0) != null) {
+      buffer1(0) = if (buffer1.getAs[Double](0) > buffer2.getAs[Double](0)) buffer2.getAs[Double](0) else buffer1.getAs[Double](0)
+
+    }
   }
 }
 
