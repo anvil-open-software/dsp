@@ -56,11 +56,10 @@ object Trucks extends App {
   private var timeSeries: List[AnyRef] = List()
 
   var dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
-  // todo oparameterize
-  var send_anomalies = false
-  var anomaly_threshhold = 10
+  // todo  parameterize
+  val send_anomalies = false
+  lazy val anomaly_threshhold = 7
   // can't use null in scala with Double
-  val UNINITIALIZED_INIT_TEMP_VALUE = 1000000
 
   import collection.JavaConversions._
 
@@ -126,16 +125,16 @@ object Trucks extends App {
     }
   }
 
-  // simple odd man out
-  def shouldSend(prevData: Double, curData: Double, nextData: Double): Boolean = {
-    return (send_anomalies || prevData == UNINITIALIZED_INIT_TEMP_VALUE ||
-      (Math.abs(curData - prevData) < anomaly_threshhold ||
+  // find point that is simple odd man out
+  def shouldSend(prevData: Option[Double], curData: Double, nextData: Double): Boolean = {
+    return (send_anomalies || prevData == None ||
+      (Math.abs(curData - prevData.get) < anomaly_threshhold ||
         Math.abs(curData - nextData) < anomaly_threshhold))
   }
 
   def dispatchTruck(truckId: String, countdownTimer: CountdownTimer) {
     var index = randomIndex()
-    var previousValue: Double = UNINITIALIZED_INIT_TEMP_VALUE
+    var previousValue: Option[Double] = None
 
     // will limit sends to 1 per second
     val rateLimiter = RateLimiter.create(1, 0, MINUTES) // make configurable if needed
@@ -158,10 +157,10 @@ object Trucks extends App {
       if (shouldSend(previousValue, currentValue, nextValue)) {
         producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json.getBytes(Charset.defaultCharset())))
       } else {
-        logger.info("Skipping point anomaly for " + truckId + ":" + previousValue + "," + currentValue  )
+        logger.warn("Skipping point anomaly for " + truckId + ":" + previousValue + "," + currentValue  )
       }
       index = index + 1
-      previousValue = currentValue
+      previousValue = Some(currentValue)
     } while (!countdownTimer.isFinished)
   }
 
