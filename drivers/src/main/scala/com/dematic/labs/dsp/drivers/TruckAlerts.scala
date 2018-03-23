@@ -1,5 +1,7 @@
 package com.dematic.labs.dsp.drivers
 
+import java.sql.Timestamp
+
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
 import com.google.common.base.Strings
@@ -8,6 +10,8 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{ForeachWriter, Row, SparkSession}
+
+import scala.collection.mutable.ListBuffer
 
 object TruckAlerts {
   // should only be  used with testing
@@ -68,10 +72,8 @@ object TruckAlerts {
       val alerts = channels.
         withWatermark("_timestamp", "1 minutes"). // only keep old data for 1 minutes for late updates
         groupBy(window('_timestamp, "60 minutes") as "alert_time", 'truck).
-     //   agg(collect_list(struct('_timestamp, 'value)))
-       agg(increasingTemperatureAlert('_timestamp, 'value))
-
-      alerts.printSchema()
+        //   agg(collect_list(struct('_timestamp, 'value)))
+        agg(increasingTemperatureAlert('_timestamp, 'value))
 
       // just write to the console
       alerts.writeStream
@@ -99,7 +101,7 @@ object TruckAlerts {
   }
 }
 
-class IncreasingTemperatureAlert(threshold: Int) extends UserDefinedAggregateFunction {
+private class IncreasingTemperatureAlert(threshold: Int) extends UserDefinedAggregateFunction {
   // This is the input fields for your aggregate function.
   override def inputSchema: org.apache.spark.sql.types.StructType =
     StructType(
@@ -141,136 +143,62 @@ class IncreasingTemperatureAlert(threshold: Int) extends UserDefinedAggregateFun
   // This is the initial value for your buffer schema.
   override def initialize(buffer: MutableAggregationBuffer): Unit = {
     buffer(0) = null // min
-    buffer(1) = Nil // empty list of t/v
+    buffer.update(1, Array.empty[(Timestamp, Double)]) // empty list of t/v
   }
 
   // This is how to update your buffer schema given an input.
   override def update(buffer: MutableAggregationBuffer, input: Row): Unit = {
     // update the min
-    //todo: think about order of data
-    updateMin(buffer, input.getAs[Double](0))
+    updateMin(buffer, input)
     // update the buffer
+    updateBuffer(buffer, input)
   }
 
   // This is how to merge two objects with the bufferSchema type.
   override def merge(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = {
     mergeMin(buffer1, buffer2)
+    mergeBuffer(buffer1, buffer2)
   }
 
   // This is where you output the final value, given the final value of your bufferSchema.
   override def evaluate(buffer: Row): Any = {
-    buffer(0)
+    val min = buffer.getDouble(0)
+
   }
 
-  private def updateMin(buffer: MutableAggregationBuffer, min: Double): Unit = {
+  private def updateMin(buffer: MutableAggregationBuffer, input: Row): Unit = {
     // keep the minimum
+    val inputMin = input.getDouble(1) // input row is t/v
+    // check to see if min has been set, internal structure is min, t/v
     buffer(0) =
-      if (buffer.isNullAt(0)) min
-      else if (min > buffer.getAs[Double](0)) buffer.getAs[Double](0)
-      else min
+      if (buffer.isNullAt(0)) inputMin
+      else if (inputMin > buffer.getDouble(0)) buffer.getDouble(0)
+      else inputMin
   }
 
   private def mergeMin(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = {
+    // internal structure is min, t/v
     if (buffer1(0) == null) {
       buffer1(0) = buffer2(0)
     }
     if (buffer1(0) != null) {
-      buffer1(0) = if (buffer1.getAs[Double](0) > buffer2.getAs[Double](0)) buffer2.getAs[Double](0) else buffer1.getAs[Double](0)
-
+      buffer1(0) = if (buffer1.getDouble(0) > buffer2.getDouble(0)) buffer2.getDouble(0) else buffer1.getDouble(0)
     }
   }
-}
 
-
-// [[2017-01-17 03:00:00.0,2017-01-17 04:00:00.0],
-//      H2X3100,
-//        WrappedArray([2017-01-17 03:35:30.079,37.0])]
-
-
-// [[2017-01-17 03:00:00.0,2017-01-17 04:00:00.0],
-//      H2X3100,
-//        WrappedArray([2017-01-17 03:35:32.079,37.0], [2017-01-17 03:35:31.079,37.0], [2017-01-17 03:35:33.079,37.0], [2017-01-17 03:35:30.079,37.0])]
-
-
-private class IncreasedTempThreshold extends UserDefinedAggregateFunction {
-
-  /*override def inputSchema: org.apache.spark.sql.types.StructType =
-    StructType(Seq(StructField("value", DoubleType), StructField("value2", DoubleType)))*/
-
-
-  /*
-
-
-  values: array (nullable = true)
- |    |-- element: struct (containsNull = true)
- |    |    |-- _timestamp: timestamp (nullable = true)
- |    |    |-- value: double (nullable = true)
-
-
-
-
-root
- |-- alert_time: struct (nullable = true)
- |    |-- start: timestamp (nullable = true)
- |    |-- end: timestamp (nullable = true)
- |-- truck: string (nullable = true)
-
-
- |-- values: array (nullable = true)
- |    |-- element: struct (containsNull = true)
- |    |    |-- _timestamp: timestamp (nullable = true)
- |    |    |-- value: double (nullable = true)
-
-
-
-val schema = StructType(
-      Array(
-        StructField("id", StringType),
-        StructField("name", StringType),
-        StructField("score", ArrayType(StructType(Array(
-          StructField("keyword", StringType),
-          StructField("point", IntegerType)
-        ))))
-      )
-    )
-
-
-    */
-  override def inputSchema: StructType = StructType(
-    Array(
-      StructField("values", ArrayType(
-        StructType(
-          Array(
-            StructField("_timestamp", TimestampType),
-            StructField("value", DoubleType)
-          )
-        )
-      )))
-  )
-
-
-  override def bufferSchema: StructType = StructType(
-    StructField("product", DoubleType) :: Nil
-  )
-
-  override def dataType: DataType = DoubleType
-
-  override def deterministic: Boolean = true
-
-  override def initialize(buffer: MutableAggregationBuffer): Unit = {
-    buffer(0) = 0.0
+  private def updateBuffer(buffer: MutableAggregationBuffer, input: Row): Unit = {
+    // internal structure is min, t/v
+    var tempArray = new ListBuffer[Tuple2[Timestamp, Double]]()
+    tempArray ++= buffer.getAs[List[Tuple2[Timestamp, Double]]](1)
+    val inputValues: Tuple2[Timestamp, Double] = (input.getTimestamp(0), input.getDouble(1))
+    tempArray += inputValues
+    buffer.update(1, tempArray)
   }
 
-  override def update(buffer: MutableAggregationBuffer, input: Row): Unit = {
-    buffer(0) = buffer.getAs[Double](0) + input.getAs[Double](0) * input.getAs[Double](0)
-  }
-
-  override def merge(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = {
-    buffer1(0) = buffer1.getAs[Double](0) + buffer2.getAs[Double](0)
-
-  }
-
-  override def evaluate(buffer: Row): Any = {
-    buffer.getDouble(0)
+  private def mergeBuffer(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = {
+    var tempArray = new ListBuffer[Tuple2[Timestamp, Double]]()
+    tempArray ++= buffer1.getAs[List[Tuple2[Timestamp, Double]]](1)
+    tempArray ++= buffer2.getAs[List[Tuple2[Timestamp, Double]]](1)
+    buffer1.update(1, tempArray)
   }
 }
