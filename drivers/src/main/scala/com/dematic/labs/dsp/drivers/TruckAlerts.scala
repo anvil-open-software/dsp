@@ -163,7 +163,7 @@ private class IncreasingTemperatureAlert(threshold: Int) extends UserDefinedAggr
   // This is where you output the final value, given the final value of your bufferSchema.
   override def evaluate(buffer: Row): Any = {
     val min = buffer.getDouble(0)
-
+    val values = buffer.getList[(Timestamp, Double)](1)
   }
 
   private def updateMin(buffer: MutableAggregationBuffer, input: Row): Unit = {
@@ -188,17 +188,17 @@ private class IncreasingTemperatureAlert(threshold: Int) extends UserDefinedAggr
 
   private def updateBuffer(buffer: MutableAggregationBuffer, input: Row): Unit = {
     // internal structure is min, t/v
-    var tempArray = new ListBuffer[Tuple2[Timestamp, Double]]()
-    tempArray ++= buffer.getAs[List[Tuple2[Timestamp, Double]]](1)
-    val inputValues: Tuple2[Timestamp, Double] = (input.getTimestamp(0), input.getDouble(1))
+    var tempArray = new ListBuffer[(Timestamp, Double)]()
+    tempArray ++= buffer.getAs[List[(Timestamp, Double)]](1)
+    val inputValues: (Timestamp, Double) = (input.getTimestamp(0), input.getDouble(1))
     tempArray += inputValues
     buffer.update(1, tempArray)
   }
 
   private def mergeBuffer(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = {
-    var tempArray = new ListBuffer[Tuple2[Timestamp, Double]]()
-    tempArray ++= buffer1.getAs[List[Tuple2[Timestamp, Double]]](1)
-    tempArray ++= buffer2.getAs[List[Tuple2[Timestamp, Double]]](1)
+    var tempArray = new ListBuffer[(Timestamp, Double)]()
+    tempArray ++= buffer1.getAs[List[(Timestamp, Double)]](1)
+    tempArray ++= buffer2.getAs[List[(Timestamp, Double)]](1)
     buffer1.update(1, tempArray)
   }
 }
