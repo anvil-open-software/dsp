@@ -5,12 +5,14 @@ import java.sql.Timestamp
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
 import com.google.common.base.Strings
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.expressions.{MutableAggregationBuffer, UserDefinedAggregateFunction}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{ForeachWriter, Row, SparkSession}
 
+import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 
 object TruckAlerts {
@@ -160,10 +162,16 @@ private class IncreasingTemperatureAlert(threshold: Int) extends UserDefinedAggr
     mergeBuffer(buffer1, buffer2)
   }
 
+  //noinspection ConvertExpressionToSAM
+  implicit def ordered: Ordering[Timestamp] = new Ordering[Timestamp] {
+    def compare(x: Timestamp, y: Timestamp): Int = x compareTo y
+  }
+
   // This is where you output the final value, given the final value of your bufferSchema.
   override def evaluate(buffer: Row): Any = {
     val min = buffer.getDouble(0)
-    val values = buffer.getList[(Timestamp, Double)](1)
+    //todo: sort by timestamp, ensure it is efficient
+    val values = buffer.getList[GenericRowWithSchema](1) sortBy (time => time.getTimestamp(0))
   }
 
   private def updateMin(buffer: MutableAggregationBuffer, input: Row): Unit = {
