@@ -125,10 +125,10 @@ object Trucks extends App {
     }
   }
 
-  // find point that is simple odd man out
+  // simple filter to find point that differs by anomaly_threshhold in either direction
   def shouldSend(prevData: Option[Double], curData: Double, nextData: Double): Boolean = {
     return (send_anomalies || prevData == None ||
-      (Math.abs(curData - prevData.get) < anomaly_threshhold ||
+      (Math.abs(curData - prevData.get) < anomaly_threshhold &&
         Math.abs(curData - nextData) < anomaly_threshhold))
   }
 
