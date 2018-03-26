@@ -120,7 +120,7 @@ private class IncreasingTemperatureAlert(threshold: Int) extends UserDefinedAggr
       StructField("alerts", ArrayType(
         StructType(
           Array(
-            StructField("timestamp", TimestampType),
+            StructField("_timestamp", TimestampType),
             StructField("value", DoubleType))
         ))
       )
@@ -133,12 +133,23 @@ private class IncreasingTemperatureAlert(threshold: Int) extends UserDefinedAggr
       StructField("alerts", ArrayType(
         StructType(
           Array(
-            StructField("timestamp", TimestampType),
+            StructField("_timestamp", TimestampType),
             StructField("value", DoubleType))
         ))
       )
     )
   )
+
+  /* override def dataType: DataType = new StructType()
+     .add("alerts", ArrayType(
+       new StructType()
+         .add("alert", ArrayType(
+           new StructType()
+             .add("_timestamp", TimestampType)
+             .add("value", DoubleType)
+         )))
+     )*/
+
 
   override def deterministic: Boolean = true
 
@@ -169,9 +180,32 @@ private class IncreasingTemperatureAlert(threshold: Int) extends UserDefinedAggr
 
   // This is where you output the final value, given the final value of your bufferSchema.
   override def evaluate(buffer: Row): Any = {
-    val min = buffer.getDouble(0)
-    //todo: sort by timestamp, ensure it is efficient
-    val values = buffer.getList[GenericRowWithSchema](1) sortBy (time => time.getTimestamp(0))
+    var minTemp = buffer.getDouble(0)
+    val sortedValues = buffer.getList[GenericRowWithSchema](1) sortBy (time => time.getTimestamp(0))
+    // create the list of alerts and data
+    var alerts = new ListBuffer[List[(Timestamp, Double)]]()
+    // keep track of where we are
+    var alertArrayIndex = 0
+    var valueIndex = 1
+    // temp
+    val tmpListBuffer = ListBuffer[(Timestamp, Double)]() //todo: think about
+    sortedValues.foreach(value => {
+      val currentTemp = value.getDouble(1)
+      if ((currentTemp - minTemp) >= threshold) {
+        // update the minTemp
+        minTemp = currentTemp
+        // convert and add all values to the alert array
+        val tmpArray = sortedValues.take(valueIndex)
+        tmpArray.foreach(t => {
+          tmpListBuffer += Tuple2(t.getTimestamp(0), t.getDouble(1))
+        })
+        alerts.insert(alertArrayIndex, tmpListBuffer.toList)
+        tmpListBuffer.clear()
+        alertArrayIndex = alertArrayIndex + 1
+      }
+      valueIndex = valueIndex + 1
+    })
+    alerts
   }
 
   private def updateMin(buffer: MutableAggregationBuffer, input: Row): Unit = {
