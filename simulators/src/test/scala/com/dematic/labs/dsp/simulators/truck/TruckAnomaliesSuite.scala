@@ -9,9 +9,15 @@ class TruckAnomaliesSuite extends FunSuite {
     assert(true===Trucks.shouldSend(None,1,40))
     assert(true===Trucks.shouldSend(None,21,20))
 
+    /* for single point
     assert(false===Trucks.shouldSend(Some(0),-40,0))
     assert(true===Trucks.shouldSend(Some(22.0),20,40))
     assert(true===Trucks.shouldSend(Some(22.0),10,10))
-
+  */
+    /* double point */
+    assert(false===Trucks.shouldSend(Some(0),-40,0))
+    assert(false===Trucks.shouldSend(Some(22.0),20,40))
+    assert(false===Trucks.shouldSend(Some(22.0),10,10))
+    assert(true===Trucks.shouldSend(Some(22.0),20,26))
   }
 }
