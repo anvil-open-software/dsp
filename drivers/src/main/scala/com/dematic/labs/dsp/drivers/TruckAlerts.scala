@@ -8,7 +8,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.types.DataTypes.StringType
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{ForeachWriter, Row, SparkSession}
+import org.apache.spark.sql.{Row, SparkSession}
 
 import scala.collection.mutable.ListBuffer
 
@@ -72,25 +72,17 @@ object TruckAlerts {
       val alerts = channels.
         withWatermark("_timestamp", "1 minutes"). // only keep old data for 1 minutes for late updates
         groupBy(window('_timestamp, "60 minutes") as "alert_time", 'truck).
-        agg(alertCount('value) as "alerts", collect_list(struct('_timestamp, 'value)) as "values").where('alerts > 0)
+        agg(mean('value) as "mean", alertCount('value) as "alerts",
+          collect_list(struct('_timestamp, 'value)) as "values").where('alerts > 0)
 
       // just write to the console
       alerts.writeStream
+        .format("console")
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
+        .option("truncate", "false")
         .queryName("truckAlerts")
         .outputMode("update")
-
-        .foreach(new ForeachWriter[Row]() {
-          override def open(partitionId: Long, version: Long) = true
-
-          override def process(row: Row) {
-            println(row.toString())
-          }
-
-          override def close(errorOrNull: Throwable) {}
-
-        })
         .start
 
       // keep alive
@@ -110,8 +102,12 @@ object TruckAlerts {
     // This is the internal fields you keep for computing your aggregate.
     override def bufferSchema = StructType(
       Array(
-        StructField("values", ArrayType(DoubleType))
-      )
+        StructField("values", ArrayType(DoubleType)),
+        StructField("sum_length", StructType(
+          Array(
+            StructField("sum", DoubleType),
+            StructField("length", IntegerType))
+        )))
     )
 
     // define the return type
@@ -123,17 +119,17 @@ object TruckAlerts {
     // Initial values
     override def initialize(buffer: MutableAggregationBuffer): Unit = {
       buffer.update(0, Array.empty[Double])
+      buffer.update(1, (0.0, 0))
     }
 
     // Updated based on Input
     override def update(buffer: MutableAggregationBuffer, input: Row): Unit = {
-      if (!input.isNullAt(0)) {
-        var tempArray = new ListBuffer[Double]()
-        tempArray ++= buffer.getAs[List[Double]](0)
-        val inputValues = input.getAs[Double](0)
-        tempArray += inputValues
-        buffer.update(0, tempArray)
-      }
+      // only need to update the values not the sum/lemgth
+      var tempArray = new ListBuffer[Double]()
+      tempArray ++= buffer.getAs[List[Double]](0)
+      val inputValues = input.getAs[Double](0)
+      tempArray += inputValues
+      buffer.update(0, tempArray)
     }
 
     // Merge two schemas
@@ -142,12 +138,17 @@ object TruckAlerts {
       tempArray ++= buffer1.getAs[List[Double]](0)
       tempArray ++= buffer2.getAs[List[Double]](0)
       buffer1.update(0, tempArray)
+      // merge the sum/length, tempArray has already been merged
+      val sum = tempArray.sum
+      val length = tempArray.length
+      buffer1.update(1, (sum, length))
     }
 
     // Output
     override def evaluate(buffer: Row): Any = {
       var count = 0
-      val mean = 17.5 //todo try to pass in
+      val struct = buffer.getStruct(1)
+      val mean = struct.getDouble(0) / struct.getInt(1)
       val threshold = 10 // std dev, needs to be configure
 
       import scala.collection.JavaConversions._
