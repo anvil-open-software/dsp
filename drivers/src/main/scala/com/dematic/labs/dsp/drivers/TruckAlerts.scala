@@ -92,14 +92,14 @@ object TruckAlerts {
   }
 
   class AlertCount extends UserDefinedAggregateFunction {
-    // This is the input fields for your aggregate function.
+    // This is the input fields for your aggregate function
     override def inputSchema: StructType = StructType(
       Array(
         StructField("value", DoubleType)
       )
     )
 
-    // This is the internal fields you keep for computing your aggregate.
+    // This is the internal fields you keep for computing your aggregate
     override def bufferSchema = StructType(
       Array(
         StructField("values", ArrayType(DoubleType)),
@@ -118,13 +118,13 @@ object TruckAlerts {
 
     // Initial values
     override def initialize(buffer: MutableAggregationBuffer): Unit = {
-      buffer.update(0, Array.empty[Double])
-      buffer.update(1, (0.0, 0))
+      buffer.update(0, Array.empty[Double]) // temperature values
+      buffer.update(1, (0.0, 0)) // sum, value count
     }
 
     // Updated based on Input
     override def update(buffer: MutableAggregationBuffer, input: Row): Unit = {
-      // only need to update the values not the sum/lemgth
+      // only need to update the values not the sum/length
       var tempArray = new ListBuffer[Double]()
       tempArray ++= buffer.getAs[List[Double]](0)
       val inputValues = input.getAs[Double](0)
