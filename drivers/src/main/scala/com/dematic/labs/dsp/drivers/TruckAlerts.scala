@@ -103,7 +103,7 @@ object TruckAlerts {
     override def bufferSchema = StructType(
       Array(
         StructField("values", ArrayType(DoubleType)),
-        StructField("sum_length", StructType(
+        StructField("mean", StructType(
           Array(
             StructField("sum", DoubleType),
             StructField("length", IntegerType))
