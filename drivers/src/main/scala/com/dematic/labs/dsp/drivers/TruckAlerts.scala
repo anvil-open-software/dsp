@@ -40,7 +40,7 @@ object TruckAlerts {
         config.getDriverAppName))
     }
 
-    val alertCount = new AlertCount
+    val temperatureAnomalyCount = new TemperatureAnomalyCount
 
     // create the kafka input source
     try {
@@ -72,7 +72,7 @@ object TruckAlerts {
       val alerts = channels.
         withWatermark("_timestamp", "1 minutes"). // only keep old data for 1 minutes for late updates
         groupBy(window('_timestamp, "60 minutes") as "alert_time", 'truck).
-        agg(mean('value) as "mean", alertCount('value) as "alerts",
+        agg(mean('value) as "mean", temperatureAnomalyCount('value) as "alerts",
           collect_list(struct('_timestamp, 'value)) as "values").where('alerts > 0)
 
       // just write to the console
@@ -91,7 +91,7 @@ object TruckAlerts {
       sparkSession.close
   }
 
-  class AlertCount extends UserDefinedAggregateFunction {
+  class TemperatureAnomalyCount extends UserDefinedAggregateFunction {
     // This is the input fields for your aggregate function
     override def inputSchema: StructType = StructType(
       Array(
@@ -106,7 +106,7 @@ object TruckAlerts {
         StructField("mean", StructType(
           Array(
             StructField("sum", DoubleType),
-            StructField("length", IntegerType))
+            StructField("count", IntegerType))
         )))
     )
 
@@ -124,7 +124,7 @@ object TruckAlerts {
 
     // Updated based on Input
     override def update(buffer: MutableAggregationBuffer, input: Row): Unit = {
-      // only need to update the values not the sum/length
+      // only need to update the values not the sum/count
       var tempArray = new ListBuffer[Double]()
       tempArray ++= buffer.getAs[List[Double]](0)
       val inputValues = input.getAs[Double](0)
@@ -138,10 +138,10 @@ object TruckAlerts {
       tempArray ++= buffer1.getAs[List[Double]](0)
       tempArray ++= buffer2.getAs[List[Double]](0)
       buffer1.update(0, tempArray)
-      // merge the sum/length, tempArray has already been merged
+      // merge the sum/count, tempArray has already been merged
       val sum = tempArray.sum
-      val length = tempArray.length
-      buffer1.update(1, (sum, length))
+      val count = tempArray.length
+      buffer1.update(1, (sum, count))
     }
 
     // Output
