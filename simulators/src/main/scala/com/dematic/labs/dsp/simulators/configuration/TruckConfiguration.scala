@@ -14,6 +14,9 @@ object TruckConfiguration {
     private val USERNAME = "producer.influxdb.username"
     private val PASSWORD = "producer.influxdb.password"
     private val PREDICATE_DATE_RANGE = "producer.influxdb.query.predicate"
+    private val ANOMALIES_SEND = "producer.anomalies.send"
+    private val ANOMALIES_FILTER_THRESHOLD = "producer.anomalies.filter.threshold"
+
 
     val truckIdRange: util.List[Integer] = getConfig.getIntList(TRUCK_ID_RANGE)
     val url: String = getConfig.getString(URL)
@@ -21,6 +24,8 @@ object TruckConfiguration {
     val username: String = getConfig.getString(USERNAME)
     val password: String = getConfig.getString(PASSWORD)
     val predicateDateRange: util.List[String] = getConfig.getStringList(PREDICATE_DATE_RANGE)
+    val sendAnomalies: Boolean = getConfig.getBoolean(ANOMALIES_SEND)
+    val anomaliesFilterThreshhold: Int = getConfig.getInt(ANOMALIES_FILTER_THRESHOLD)
 
     override def getThis: TruckConfiguration.Builder = {
       this
@@ -40,6 +45,8 @@ final class TruckConfiguration private[TruckConfiguration](val builder: TruckCon
   private val username: String = builder.username
   private val password: String = builder.password
   private val predicateDateRange: util.List[String] = builder.predicateDateRange
+  private val anomaliesSend: Boolean = builder.sendAnomalies
+  private val anomaliesFilterThreshhold:Int = builder.anomaliesFilterThreshhold
 
   def getTruckIdRange: util.List[Integer] = {
     truckIdRange
@@ -79,6 +86,14 @@ final class TruckConfiguration private[TruckConfiguration](val builder: TruckCon
 
   def getPredicateDateRangeHigh: String = {
     Iterables.getLast(predicateDateRange)
+  }
+
+  def getAnomaliesSend: Boolean = {
+    anomaliesSend
+  }
+
+  def getAnomaliesFilterThreshhold: Int = {
+    anomaliesFilterThreshhold
   }
 
   override def toString: String = {
