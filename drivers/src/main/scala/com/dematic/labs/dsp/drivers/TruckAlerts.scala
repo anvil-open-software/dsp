@@ -79,9 +79,9 @@ object TruckAlerts {
         .queryName("truckAlerts")
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
-        .option("topic", "output") // todo make config
+        .option("topic", config.getKafkaOutputTopics)
         .option("checkpointLocation", config.getSparkCheckpointLocation)
-        .outputMode("update") //todo: make config
+        .outputMode(config.getSparkOutputMode)
         .start
 
       // keep alive

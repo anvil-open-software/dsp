@@ -24,6 +24,7 @@ public abstract class DriverConfiguration implements Serializable {
         // Kafka Keys
         private static final String KAFKA_BOOTSTRAP_SERVERS_KEY = "kafka.bootstrap.servers";
         private static final String KAFKA_TOPICS_KEY = "kafka.topics";
+        private static final String KAFKA_OUTPUT_TOPICS_KEY = "kafka.output.topics";
         private static final String KAFKA_SUBSCRIBE_KEY = "kafka.subscribe";
         private static final String KAFKA_STARTING_OFFSETS_KEY = "kafka.startingOffsets";
         private static final String KAFKA_MAX_OFFSETS_PER_TRIGGER_KEY = "kafka.maxOffsetsPerTrigger";
@@ -48,6 +49,7 @@ public abstract class DriverConfiguration implements Serializable {
         // kafka properties
         private String kafkaBootstrapServers;
         private String kafkaTopics;
+        private String kafkaOutputTopics;
         private String kafkaSubscribe;
         private String kafkaStartingOffsets;
         private String kafkaMaxOffsetsPerTrigger;
@@ -80,6 +82,7 @@ public abstract class DriverConfiguration implements Serializable {
             sparkCassandraAuthPassword = config.getString(SPARK_CASSANDRA_AUTH_PASSWORD_KEY);
             kafkaBootstrapServers = config.getString(KAFKA_BOOTSTRAP_SERVERS_KEY);
             kafkaTopics = config.getString(KAFKA_TOPICS_KEY);
+            kafkaOutputTopics = config.getString(KAFKA_OUTPUT_TOPICS_KEY);
             kafkaSubscribe = config.getString(KAFKA_SUBSCRIBE_KEY);
             kafkaStartingOffsets = config.getString(KAFKA_STARTING_OFFSETS_KEY);
             kafkaMaxOffsetsPerTrigger = config.getString(KAFKA_MAX_OFFSETS_PER_TRIGGER_KEY);
@@ -107,6 +110,7 @@ public abstract class DriverConfiguration implements Serializable {
     // kafka properties
     private final String kafkaBootstrapServers;
     private final String kafkaTopics;
+    private final String kafkaOutputTopics;
     private final String kafkaSubscribe;
     private final String kafkaStartingOffsets;
     private final String kafkaMaxOffsetsPerTrigger;
@@ -129,6 +133,7 @@ public abstract class DriverConfiguration implements Serializable {
         sparkCassandraAuthPassword = builder.sparkCassandraAuthPassword;
         kafkaBootstrapServers = builder.kafkaBootstrapServers;
         kafkaTopics = builder.kafkaTopics;
+        kafkaOutputTopics = builder.kafkaOutputTopics;
         kafkaSubscribe = builder.kafkaSubscribe;
         kafkaStartingOffsets = builder.kafkaStartingOffsets;
         kafkaMaxOffsetsPerTrigger = builder.kafkaMaxOffsetsPerTrigger;
@@ -201,6 +206,10 @@ public abstract class DriverConfiguration implements Serializable {
         return kafkaTopics;
     }
 
+    public String getKafkaOutputTopics() {
+        return kafkaOutputTopics;
+    }
+
     public String getKafkaSubscribe() {
         return kafkaSubscribe;
     }
@@ -233,6 +242,7 @@ public abstract class DriverConfiguration implements Serializable {
                 ", sparkCassandraAuthPassword='" + sparkCassandraAuthPassword + '\'' +
                 ", kafkaBootstrapServers='" + kafkaBootstrapServers + '\'' +
                 ", kafkaTopics='" + kafkaTopics + '\'' +
+                ", kafkaOutputTopics='" + kafkaOutputTopics + '\'' +
                 ", kafkaSubscribe='" + kafkaSubscribe + '\'' +
                 ", kafkaStartingOffsets='" + kafkaStartingOffsets + '\'' +
                 ", kafkaMaxOffsetsPerTrigger='" + kafkaMaxOffsetsPerTrigger + '\'' +
