@@ -1,6 +1,8 @@
 package com.dematic.labs.dsp.simulators
 
 import java.nio.charset.Charset
+import java.time.Instant
+import java.time.format.DateTimeFormatter
 import java.util
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeUnit.MINUTES
@@ -20,6 +22,11 @@ import scala.concurrent.{Await, Future}
 import scala.util.Random
 import scala.util.control.NonFatal
 
+/**
+  *
+  * To debug topic directly from kafka, use console consumer, i.e.:
+  * $KAFKA_HOME/bin/kafka-console-consumer.sh --bootstrap-server '10.207.222.11:9092,10.207.222.12:9092' --topic ccd_truck_temp
+  */
 object Trucks extends App {
   val logger: Logger = LoggerFactory.getLogger("Trucks")
 
@@ -29,8 +36,8 @@ object Trucks extends App {
   // create the connection to influxDb with more generous timeout instead of default 10 seconds
   val builder = new OkHttpClient.Builder().readTimeout(120, TimeUnit.SECONDS)
     .connectTimeout(120, TimeUnit.SECONDS)
-  private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl, config.getUsername, config.getPassword,
-    builder)
+  private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl,
+    config.getUsername, config.getPassword, builder)
   // shared kafka producer, used for batching and compression
   private val properties: util.Map[String, AnyRef] = new util.HashMap[String, AnyRef]
   properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, config.getBootstrapServers)
@@ -47,6 +54,8 @@ object Trucks extends App {
 
   private val producer: KafkaProducer[String, AnyRef] = new KafkaProducer[String, AnyRef](properties)
   private var timeSeries: List[AnyRef] = List()
+
+  var dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
 
   import collection.JavaConversions._
 
@@ -119,9 +128,12 @@ object Trucks extends App {
     // keep pushing msgs to kafka until timer finishes
     do {
       val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[AnyRef]]
+      // instead of preserving original time, use simulation time
+      val messageTime = System.currentTimeMillis();
+      // java.time.Instant = 2017-02-13T12:14:20.666Z
+      val isoDateTime = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime));
       // create the json
-      val json =
-        s"""{"truck":"$truckId","_timestamp":"${data.get(0)}","channel":"T_motTemp_Lft","value":${data.get(1)},"unit":"C${"\u00b0"}"}"""
+      val json = s"""{"truck":"$truckId","_timestamp":"$isoDateTime","channel":"T_motTemp_Lft","value":${data.get(1)}}"""
       // acquire permit to send, limits to 1 msg a second
       rateLimiter.acquire()
       // send to kafka

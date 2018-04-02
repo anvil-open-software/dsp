@@ -1,7 +1,7 @@
 package com.dematic.labs.dsp.drivers.configuration;
 
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigFactory; 
 
 import java.io.File;
 import java.io.Serializable;
@@ -66,6 +66,7 @@ public abstract class DriverConfiguration implements Serializable {
         }
 
         private void initializeConfigurationProperties() {
+
             driverAppName = config.getString(DRIVER_APP_NAME_KEY);
             sparkMaster = config.getString(SPARK_MASTER_KEY);
             sparkCheckpointLocation = config.getString(SPARK_CHECKPOINT_KEY);
@@ -83,7 +84,9 @@ public abstract class DriverConfiguration implements Serializable {
             kafkaStartingOffsets = config.getString(KAFKA_STARTING_OFFSETS_KEY);
             kafkaMaxOffsetsPerTrigger = config.getString(KAFKA_MAX_OFFSETS_PER_TRIGGER_KEY);
             cassandraKeyspace = config.getString(CASSANDRA_KEYSPACE_KEY);
+
         }
+
 
         public abstract DriverConfiguration build();
     }
@@ -110,6 +113,7 @@ public abstract class DriverConfiguration implements Serializable {
     // cassandra properties
     private final String cassandraKeyspace;
 
+    private Config config;
 
     DriverConfiguration(final DriverConfiguration.Builder builder) {
         driverAppName = builder.driverAppName;
@@ -129,6 +133,20 @@ public abstract class DriverConfiguration implements Serializable {
         kafkaStartingOffsets = builder.kafkaStartingOffsets;
         kafkaMaxOffsetsPerTrigger = builder.kafkaMaxOffsetsPerTrigger;
         cassandraKeyspace = builder.cassandraKeyspace;
+        config = builder.config;
+    }
+
+    /**
+     *
+     * @param inKey
+     * @return use for any config that is NOT defined statically above
+     */
+    public String getConfigString(String inKey) {
+        return config.getString(inKey);
+    }
+
+    public Number getConfigNumber(String inKey) {
+        return config.getNumber(inKey);
     }
 
     public String getDriverAppName() {
