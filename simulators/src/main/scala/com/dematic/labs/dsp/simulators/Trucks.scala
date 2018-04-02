@@ -56,10 +56,9 @@ object Trucks extends App {
   private var timeSeries: List[AnyRef] = List()
 
   var dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
-  // todo  parameterize
+  // todo currently these values are hardcoded until we need to parameterize them
   val send_anomalies = false
-  lazy val anomaly_threshhold = 7
-  // can't use null in scala with Double
+  lazy val anomaly_threshhold = 9
 
   import collection.JavaConversions._
 
