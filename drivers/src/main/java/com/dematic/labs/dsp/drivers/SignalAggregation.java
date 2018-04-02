@@ -98,7 +98,7 @@ public final class SignalAggregation {
 
             // write to cassandra
             final StreamingQuery query = aggregate.writeStream()
-                    .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation())
+                    .option("checkpointLocation", config.getSparkCheckpointLocation())
                     .outputMode(OutputMode.Complete())
                     .queryName("signalAggregation")
                     .foreach(new ForeachWriter<Row>() {

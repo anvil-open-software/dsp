@@ -45,7 +45,7 @@ object CumulativeCount {
     val query = totalCount.writeStream
       .format("console")
       .trigger(ProcessingTime(config.getSparkQueryTrigger))
-      .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
+      .option("checkpointLocation", config.getSparkCheckpointLocation)
       .queryName("total_count")
       .outputMode(Complete)
       .start
