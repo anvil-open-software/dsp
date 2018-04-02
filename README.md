@@ -1,9 +1,13 @@
 dlab
 ====
 
-Dematic Labs sandbox project for creating a generic Data Streaming Pipeline. 
-Technologies include Kafka for data ingestion, Spark and Spark Streaming for 
-data processing, and Cassandra for data storage.
+Dematic Labs sandbox project for creating a generic Data Streaming Pipeline.
+
+Technologies include
+- Kafka for data ingestion
+- Spark and Spark Streaming for data processing
+- Cassandra for data storage
+- influxdb for ad hoc timeseries storage
 
 Project will generate two executable jars: 
 
