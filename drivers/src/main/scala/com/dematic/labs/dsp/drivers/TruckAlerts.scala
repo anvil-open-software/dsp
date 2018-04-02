@@ -74,13 +74,14 @@ object TruckAlerts {
           collect_list(struct('_timestamp, 'value)) as "values").where('alerts > 0)
 
       // just write to the console
-      alerts.writeStream
-        .format("console")
-        .trigger(ProcessingTime(config.getSparkQueryTrigger))
-        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
-        .option("truncate", "false")
+      alerts.selectExpr("to_json(struct(*)) AS value").writeStream
+        .format("kafka")
         .queryName("truckAlerts")
-        .outputMode("update")
+        .trigger(ProcessingTime(config.getSparkQueryTrigger))
+        .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
+        .option("topic", "output") // todo make config
+        .option("checkpointLocation", config.getSparkCheckpointLocation)
+        .outputMode("update") //todo: make config
         .start
 
       // keep alive
