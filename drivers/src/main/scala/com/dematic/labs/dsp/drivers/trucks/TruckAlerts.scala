@@ -1,4 +1,4 @@
-package com.dematic.labs.dsp.drivers
+package com.dematic.labs.dsp.drivers.trucks
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
