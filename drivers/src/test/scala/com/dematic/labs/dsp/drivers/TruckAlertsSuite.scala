@@ -3,6 +3,7 @@ package com.dematic.labs.dsp.drivers
 import java.nio.file.Paths
 
 import com.dematic.labs.dsp.drivers.configuration.DriverUnitTestConfiguration
+import com.dematic.labs.dsp.drivers.trucks.TruckAlerts
 import info.batey.kafka.unit.KafkaUnit
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
