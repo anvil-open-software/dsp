@@ -79,7 +79,7 @@ object Persister {
       // write to cassandra
       val persister = signals.writeStream
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
-        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
+        .option("checkpointLocation", config.getSparkCheckpointLocation)
         .queryName("persister")
         .foreach(new ForeachWriter[Row]() {
           override def open(partitionId: Long, version: Long) = true

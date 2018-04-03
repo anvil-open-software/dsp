@@ -143,14 +143,14 @@ object Trucks extends App {
       val nextValue = nextData.get(1).asInstanceOf[Double]
       // create the json
       val json =
-      s"""{"truck":"$truckId","_timestamp":"$isoDateTime","channel":"T_motTemp_Lft","value":${data.get(1)}}"""
+        s"""{"truck":"$truckId","_timestamp":"$isoDateTime","channel":"T_motTemp_Lft","value":${data.get(1)}}"""
       // acquire permit to send, limits to 1 msg a second
       rateLimiter.acquire()
       // send to kafka
-      if (TrucksFilter.shouldSend(sendAnomalies,anomalyThreshhold, previousValue, currentValue, nextValue)) {
+      if (TrucksFilter.shouldSend(sendAnomalies, anomalyThreshhold, previousValue, currentValue, nextValue)) {
         producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json.getBytes(Charset.defaultCharset())))
       } else {
-        logger.warn("Skipping point anomaly for " + truckId + ":" + previousValue + "," + currentValue  )
+        logger.warn("Skipping point anomaly for " + truckId + ":" + previousValue + "," + currentValue)
       }
       index = index + 1
       previousValue = Some(currentValue)
@@ -170,16 +170,16 @@ object Trucks extends App {
 object TrucksFilter {
   /**
     *
-    * @return false if that differs by anomaly_threshhold in either direction
+    * @return false if that differs by anomaly_threshold in either direction
     */
-  def shouldSend(sendAnomalies:Boolean,
+  def shouldSend(sendAnomalies: Boolean,
                  anomalyThreshhold: Int,
                  prevData: Option[Double],
                  curData: Double,
                  nextData: Double): Boolean = {
-    return (sendAnomalies || prevData == None ||
+    sendAnomalies || prevData.isEmpty ||
       (Math.abs(curData - prevData.get) < anomalyThreshhold &&
-        Math.abs(curData - nextData) < anomalyThreshhold))
+        Math.abs(curData - nextData) < anomalyThreshhold)
   }
 
 }

@@ -68,12 +68,12 @@ object TruckTopicToInfluxDB {
         select("channels.*").
         where("channel == 'T_motTemp_Lft'")
 
-      lazy val influxDBSink = new InfluxDBSink(config);
+      lazy val influxDBSink = new InfluxDBSink(config)
 
       channels.writeStream
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
-        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
-        .queryName("truckAlerts")
+        .option("checkpointLocation", config.getSparkCheckpointLocation)
+        .queryName("influxDBTruckAlerts")
         .foreach(influxDBSink)
         .start
 

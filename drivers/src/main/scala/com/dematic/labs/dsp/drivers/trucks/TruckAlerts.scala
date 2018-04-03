@@ -1,17 +1,16 @@
-package com.dematic.labs.dsp.drivers
+package com.dematic.labs.dsp.drivers.trucks
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
+import com.dematic.labs.dsp.drivers.functions.TemperatureAnomalyCount
 import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.Trigger.ProcessingTime
+import org.apache.spark.sql.types.DataTypes.StringType
 import org.apache.spark.sql.types._
-import org.slf4j.{Logger, LoggerFactory}
 
 object TruckAlerts {
-  val logger: Logger = LoggerFactory.getLogger("InfluxDB")
-
   // should only be  used with testing
   private var injectedDriverConfiguration: DriverConfiguration = _
 
@@ -26,7 +25,6 @@ object TruckAlerts {
     } else {
       injectedDriverConfiguration
     }
-    logger.info(config.toString);
 
     // create the spark session
     val builder: SparkSession.Builder = SparkSession.builder
@@ -39,6 +37,8 @@ object TruckAlerts {
       sparkSession.streams.addListener(new PrometheusStreamingQueryListener(sparkSession.sparkContext.getConf,
         config.getDriverAppName))
     }
+
+    val temperatureAnomalyCount = new TemperatureAnomalyCount
 
     // create the kafka input source
     try {
@@ -70,16 +70,18 @@ object TruckAlerts {
       val alerts = channels.
         withWatermark("_timestamp", "1 minutes"). // only keep old data for 1 minutes for late updates
         groupBy(window('_timestamp, "60 minutes") as "alert_time", 'truck).
-        agg(max('value) as "max", min('value) as "min", collect_list(struct('_timestamp, 'value)) as "values").
-        where('max - 'min > 10)
+        agg(temperatureAnomalyCount('value) as "alerts",
+          collect_list(struct('_timestamp, 'value)) as "values").where('alerts > 0)
 
       // just write to the console
-      alerts.writeStream
-        .format("console")
-        .trigger(ProcessingTime(config.getSparkQueryTrigger))
-        .option("spark.sql.streaming.checkpointLocation", config.getSparkCheckpointLocation)
+      alerts.selectExpr("to_json(struct(*)) AS value").writeStream
+        .format("kafka")
         .queryName("truckAlerts")
-        .outputMode("update")
+        .trigger(ProcessingTime(config.getSparkQueryTrigger))
+        .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
+        .option("topic", config.getKafkaOutputTopics)
+        .option("checkpointLocation", config.getSparkCheckpointLocation)
+        .outputMode(config.getSparkOutputMode)
         .start
 
       // keep alive
