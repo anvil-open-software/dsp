@@ -57,6 +57,9 @@ object Trucks extends App {
 
   var dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
 
+  val sendAnomalies = config.getAnomaliesSend
+  val anomalyThreshhold = config.getAnomaliesFilterThreshhold
+
   import collection.JavaConversions._
 
   try {
@@ -121,24 +124,36 @@ object Trucks extends App {
     }
   }
 
+
   def dispatchTruck(truckId: String, countdownTimer: CountdownTimer) {
     var index = randomIndex()
+    var previousValue: Option[Double] = None
+
     // will limit sends to 1 per second
     val rateLimiter = RateLimiter.create(1, 0, MINUTES) // make configurable if needed
     // keep pushing msgs to kafka until timer finishes
     do {
-      val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[AnyRef]]
+      val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[Any]]
+      val nextData = (timeSeries get (index + 1)).asInstanceOf[java.util.ArrayList[Any]]
       // instead of preserving original time, use simulation time
-      val messageTime = System.currentTimeMillis();
+      val messageTime = System.currentTimeMillis()
       // java.time.Instant = 2017-02-13T12:14:20.666Z
-      val isoDateTime = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime));
+      val isoDateTime = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime))
+      val currentValue = data.get(1).asInstanceOf[Double]
+      val nextValue = nextData.get(1).asInstanceOf[Double]
       // create the json
-      val json = s"""{"truck":"$truckId","_timestamp":"$isoDateTime","channel":"T_motTemp_Lft","value":${data.get(1)}}"""
+      val json =
+      s"""{"truck":"$truckId","_timestamp":"$isoDateTime","channel":"T_motTemp_Lft","value":${data.get(1)}}"""
       // acquire permit to send, limits to 1 msg a second
       rateLimiter.acquire()
       // send to kafka
-      producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json.getBytes(Charset.defaultCharset())))
+      if (TrucksFilter.shouldSend(sendAnomalies,anomalyThreshhold, previousValue, currentValue, nextValue)) {
+        producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json.getBytes(Charset.defaultCharset())))
+      } else {
+        logger.warn("Skipping point anomaly for " + truckId + ":" + previousValue + "," + currentValue  )
+      }
       index = index + 1
+      previousValue = Some(currentValue)
     } while (!countdownTimer.isFinished)
   }
 
@@ -146,4 +161,25 @@ object Trucks extends App {
     // generate a random index between 0 and half of the time series list
     Random.nextInt(timeSeries.size / 2)
   }
+}
+
+/**
+  * This object to be tucked out separately so component tests can run,
+  * otherwise Trucks forces a Kafka server to be up on instantiation
+  */
+object TrucksFilter {
+  /**
+    *
+    * @return false if that differs by anomaly_threshhold in either direction
+    */
+  def shouldSend(sendAnomalies:Boolean,
+                 anomalyThreshhold: Int,
+                 prevData: Option[Double],
+                 curData: Double,
+                 nextData: Double): Boolean = {
+    return (sendAnomalies || prevData == None ||
+      (Math.abs(curData - prevData.get) < anomalyThreshhold &&
+        Math.abs(curData - nextData) < anomalyThreshhold))
+  }
+
 }
