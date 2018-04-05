@@ -68,7 +68,7 @@ class TemperatureAnomalyCount extends UserDefinedAggregateFunction {
 
     import scala.collection.JavaConversions._
     for (value <- buffer.getList[Double](0)) {
-      if (math.abs(mean - value) >= threshold) count = count + 1
+      if (math.abs(mean - value) > threshold) count = count + 1
     }
     count
   }
