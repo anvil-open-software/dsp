@@ -59,6 +59,7 @@ class TemperatureAnomalyCount extends UserDefinedAggregateFunction {
     buffer1.update(1, (sum, count))
   }
 
+
   // Output
   override def evaluate(buffer: Row): Any = {
     var count = 0
