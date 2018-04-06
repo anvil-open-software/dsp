@@ -48,6 +48,7 @@ class TemperatureAnomalyCount extends UserDefinedAggregateFunction {
     buffer1.update(0, tempArray)
   }
 
+  // Evaluate the buffer once all the values have been merged and updated
   override def evaluate(buffer: Row): Any = {
     val values = buffer.getSeq[Double](0)
     // calculate the mean
