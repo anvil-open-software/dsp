@@ -4,5 +4,8 @@
 
 buildWithMaven() {
     skipSonar = true
-    skipTests = false
+
+    // revert with mvn versions:set -DnewVersion=0.1.3-SNAPSHOT
+    // set with mvn versions:set -DnewVersion=0.1.3-DLABS-1945-SNAPSHOT
+    skipTests = true
 }
