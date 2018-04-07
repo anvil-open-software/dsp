@@ -8,8 +8,7 @@ import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.Trigger._
-import org.apache.spark.sql.types.DataTypes.{DoubleType => _, StringType => _, TimestampType => _, _}
-import org.apache.spark.sql.types.{TimestampType, _}
+import org.apache.spark.sql.types._
 
 /**
   * Puts temp messages from kakfa topic to influxdb

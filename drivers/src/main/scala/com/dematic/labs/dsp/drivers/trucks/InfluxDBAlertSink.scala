@@ -1,6 +1,6 @@
 package com.dematic.labs.dsp.drivers.trucks
 
-import java.sql.{Struct, Timestamp}
+import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
 
 import com.dematic.labs.dsp.drivers.configuration.DriverConfiguration
