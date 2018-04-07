@@ -75,7 +75,8 @@ object TruckAlerts {
         where('alerts > 0)
 
       // write results to kafka
-      alerts.selectExpr("to_json(struct(*)) AS value").writeStream
+      alerts.selectExpr("to_json(struct(processing_time, truck, alert_time, alerts, values)) AS values").
+        writeStream
         .format("kafka")
         .queryName("truckAlerts")
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
