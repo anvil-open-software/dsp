@@ -15,14 +15,8 @@ class TemperatureAnomalyCount extends UserDefinedAggregateFunction {
   )
 
   // This is the internal fields you keep for computing your aggregate
-  override def bufferSchema = StructType(
-    Array(
-      StructField("values", ArrayType(DoubleType)),
-      StructField("mean", StructType(
-        Array(
-          StructField("sum", DoubleType),
-          StructField("count", IntegerType))
-      )))
+  override def bufferSchema = StructType(Array(
+    StructField("values", ArrayType(DoubleType)))
   )
 
   // define the return type
@@ -33,13 +27,12 @@ class TemperatureAnomalyCount extends UserDefinedAggregateFunction {
 
   // Initial values
   override def initialize(buffer: MutableAggregationBuffer): Unit = {
-    buffer.update(0, Array.empty[Double]) // temperature values
-    buffer.update(1, (0.0, 0)) // sum, value count
+    buffer.update(0, Array.empty[Double]) // array of values
   }
 
-  // Updated based on Input
+  // This method takes a buffer and an input row and updates the buffer.
   override def update(buffer: MutableAggregationBuffer, input: Row): Unit = {
-    // only need to update the values not the sum/count
+    // just update the values to be processed
     var tempArray = new ListBuffer[Double]()
     tempArray ++= buffer.getAs[List[Double]](0)
     val inputValues = input.getAs[Double](0)
@@ -47,30 +40,25 @@ class TemperatureAnomalyCount extends UserDefinedAggregateFunction {
     buffer.update(0, tempArray)
   }
 
-  // Merge two schemas
+  // This method takes two buffers and combines them to produce a single buffer.
   override def merge(buffer1: MutableAggregationBuffer, buffer2: Row): Unit = {
     var tempArray = new ListBuffer[Double]()
     tempArray ++= buffer1.getAs[List[Double]](0)
     tempArray ++= buffer2.getAs[List[Double]](0)
     buffer1.update(0, tempArray)
-    // merge the sum/count, tempArray has already been merged
-    val sum = tempArray.sum
-    val count = tempArray.length
-    buffer1.update(1, (sum, count))
   }
 
-
-  // Output
+  // Evaluate the buffer once all the values have been merged and updated
   override def evaluate(buffer: Row): Any = {
-    var count = 0
-    val struct = buffer.getStruct(1)
-    val mean = struct.getDouble(0) / struct.getInt(1)
+    val values = buffer.getSeq[Double](0)
+    // calculate the mean
+    val mean = values.sum / values.size
+    // determine the # of alerts
+    var alerts = 0
     val threshold = 10 // std dev, needs to be configure
-
-    import scala.collection.JavaConversions._
-    for (value <- buffer.getList[Double](0)) {
-      if (math.abs(mean - value) > threshold) count = count + 1
-    }
-    count
+    values.foreach(value => {
+      if (math.abs(mean - value) > threshold) alerts = alerts + 1
+    })
+    alerts
   }
 }
