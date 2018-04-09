@@ -4,5 +4,7 @@
 
 buildWithMaven() {
     skipSonar = true
-    skipTests = false
+
+    // revert to false for merge
+    skipTests = true
 }

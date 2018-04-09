@@ -56,9 +56,13 @@ object Trucks extends App {
   private var timeSeries: List[AnyRef] = List()
 
   var dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
+  var formatter = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'.'SSSX")
 
   val sendAnomalies = config.getAnomaliesSend
   val anomalyThreshhold = config.getAnomaliesFilterThreshhold
+
+  //todo parameterize, peg it at more than a second in case data is 1.2 ms etc...
+  val gapThresholdMilliseconds = 5000
 
   import collection.JavaConversions._
 
@@ -134,7 +138,21 @@ object Trucks extends App {
     // keep pushing msgs to kafka until timer finishes
     do {
       val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[Any]]
+      val prevData = (timeSeries get (index - 1)).asInstanceOf[java.util.ArrayList[Any]]
       val nextData = (timeSeries get (index + 1)).asInstanceOf[java.util.ArrayList[Any]]
+
+      if (gapThresholdMilliseconds > 0) {
+        // sleep if actual time between points is more than gapThresholdMilliseconds
+        val prevHistoryTime = formatter.parse(data.get(0).asInstanceOf[String]).getTime
+        val currentHistoryTime = formatter.parse(prevData.get(0).asInstanceOf[String]).getTime
+
+        val historicalGapMs = currentHistoryTime - prevHistoryTime
+        if (historicalGapMs > gapThresholdMilliseconds) {
+          logger.warn("Sleeping during gap for " + truckId + " for " + historicalGapMs + " ms")
+          Thread.sleep(historicalGapMs)
+        }
+      }
+
       // instead of preserving original time, use simulation time
       val messageTime = System.currentTimeMillis()
       // java.time.Instant = 2017-02-13T12:14:20.666Z
@@ -143,7 +161,7 @@ object Trucks extends App {
       val nextValue = nextData.get(1).asInstanceOf[Double]
       // create the json
       val json =
-        s"""{"truck":"$truckId","_timestamp":"$isoDateTime","channel":"T_motTemp_Lft","value":${data.get(1)}}"""
+      s"""{"truck":"$truckId","_timestamp":"$isoDateTime","channel":"T_motTemp_Lft","value":${data.get(1)}}"""
       // acquire permit to send, limits to 1 msg a second
       rateLimiter.acquire()
       // send to kafka
@@ -158,8 +176,8 @@ object Trucks extends App {
   }
 
   def randomIndex(): Int = {
-    // generate a random index between 0 and half of the time series list
-    Random.nextInt(timeSeries.size / 2)
+    // generate a random index between 1 and half of the time series list
+    Random.nextInt(timeSeries.size / 2) + 1
   }
 }
 
