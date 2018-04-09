@@ -9,7 +9,8 @@ import org.apache.spark.sql.{ForeachWriter, Row}
 import org.influxdb.dto.Point
 
 /**
-  * Converts truck json into influx request. This is not a generic sink since the write format depends on truck message.
+  * Converts truck alert json into influxdb request.
+  * NOT a generic sink since the JSON format depends on truck message.
   */
 class InfluxDBAlertSink(config: DriverConfiguration) extends ForeachWriter[Row] {
 

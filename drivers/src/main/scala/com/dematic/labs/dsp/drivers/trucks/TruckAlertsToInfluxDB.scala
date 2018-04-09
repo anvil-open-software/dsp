@@ -11,7 +11,10 @@ import org.apache.spark.sql.streaming.Trigger._
 import org.apache.spark.sql.types._
 
 /**
-  * Puts temp messages from kakfa topic to influxdb
+  * Simple data pusher, puts all truck topic alerts from kakfa to influxdb.
+  *
+  * Any changes to alert topic schema may potentially require change here.
+  *
   */
 object TruckAlertsToInfluxDB {
   // should only be  used with testing
@@ -53,7 +56,7 @@ object TruckAlertsToInfluxDB {
         .option("maxOffsetsPerTrigger", config.getKafkaMaxOffsetsPerTrigger)
         .load
 
-      // define the truck json schema
+      // define the alert json schema which has been flattened out below
       val schema: StructType = new StructType().add("alert_time", new StructType().add("start", TimestampType)
         .add("end", TimestampType))
         .add("truck",StringType)
@@ -61,14 +64,8 @@ object TruckAlertsToInfluxDB {
 
       import sparkSession.implicits._
 
-      /*
-       val alerts = kafka.selectExpr("cast (value as string) as json").
-        select(from_json($"json", schema) as "alerts").
-        select("alerts.*")
-      val outputAlerts= alerts.select("truck","alerts","alert_time.start","alert_time.end")
-*/
 
-      // get kafka date as we can at least get the influx db write tested.
+      // use kafka write date for now instead of digging up the max of the "values" subtable
       val alerts = kafka.selectExpr("cast (value as string) as json", "CAST(timestamp AS TIMESTAMP)").as[(String, Timestamp)].
         select(from_json($"json", schema) as "alerts", $"timestamp").
         select("alerts.*","timestamp")
