@@ -16,6 +16,7 @@ object TruckConfiguration {
     private val PREDICATE_DATE_RANGE = "producer.influxdb.query.predicate"
     private val ANOMALIES_SEND = "producer.anomalies.send"
     private val ANOMALIES_FILTER_THRESHOLD = "producer.anomalies.filter.threshold"
+    private val GAP_THRESHOLD_IN_MILLIS="producer.gap.thresholdInMilliseconds"
 
 
     val truckIdRange: util.List[Integer] = getConfig.getIntList(TRUCK_ID_RANGE)
@@ -26,6 +27,7 @@ object TruckConfiguration {
     val predicateDateRange: util.List[String] = getConfig.getStringList(PREDICATE_DATE_RANGE)
     val sendAnomalies: Boolean = getConfig.getBoolean(ANOMALIES_SEND)
     val anomaliesFilterThreshhold: Int = getConfig.getInt(ANOMALIES_FILTER_THRESHOLD)
+    val gapThresholdInMillis: Long = getConfig.getLong(GAP_THRESHOLD_IN_MILLIS)
 
     override def getThis: TruckConfiguration.Builder = {
       this
@@ -47,6 +49,7 @@ final class TruckConfiguration private[TruckConfiguration](val builder: TruckCon
   private val predicateDateRange: util.List[String] = builder.predicateDateRange
   private val anomaliesSend: Boolean = builder.sendAnomalies
   private val anomaliesFilterThreshhold:Int = builder.anomaliesFilterThreshhold
+  private val gapThresholdInMillis:Long = builder.gapThresholdInMillis
 
   def getTruckIdRange: util.List[Integer] = {
     truckIdRange
@@ -95,6 +98,14 @@ final class TruckConfiguration private[TruckConfiguration](val builder: TruckCon
   def getAnomaliesFilterThreshhold: Int = {
     anomaliesFilterThreshhold
   }
+
+  /**
+    *
+    * @return 0 if gap replay is not used, otherwise the space between two points that causes a sleep
+    */
+ def getGapThresholdInMillis: Long= {
+   gapThresholdInMillis
+ }
 
   override def toString: String = {
     "TruckConfiguration{} " + super.toString
