@@ -80,8 +80,7 @@ class TemperatureAnomalyCount extends UserDefinedAggregateFunction {
         // reset the min
         min = value
       }
-    }
-    )
+    })
     alerts
   }
 }
