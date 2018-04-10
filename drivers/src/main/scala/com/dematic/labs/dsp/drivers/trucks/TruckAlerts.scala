@@ -70,12 +70,12 @@ object TruckAlerts {
       val alerts = channels.
         withWatermark("_timestamp", "1 minutes"). // only keep old data for 1 minutes for late updates
         groupBy(window('_timestamp, "60 minutes") as "alert_time", 'truck).
-        agg(temperatureAnomalyCount('_timestamp, 'value) as "alerts", collect_list(struct('_timestamp, 'value)) as "values").
+        agg(temperatureAnomalyCount('_timestamp, 'value) as "alerts", sort_array(collect_list(struct('_timestamp, 'value))) as "values").
         withColumn("processing_time", current_timestamp()).
         where('alerts > 0)
 
       // write results to kafka
-      alerts.selectExpr("to_json(struct(processing_time, truck, alert_time, alerts, values)) AS values").
+      alerts.selectExpr("to_json(struct(processing_time, truck, alert_time, alerts, values)) AS value").
         writeStream
         .format("kafka")
         .queryName("truckAlerts")
