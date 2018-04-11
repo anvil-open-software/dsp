@@ -3,8 +3,9 @@ package com.dematic.labs.dsp.drivers.trucks
 import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
 
+import com.dematic.labs.analytics.monitor.spark.MonitorConsts
 import com.dematic.labs.dsp.drivers.configuration.DriverConfiguration
-import com.dematic.labs.dsp.tsdb.influxdb.{InfluxDBConnector,InfluxDBConsts}
+import com.dematic.labs.dsp.tsdb.influxdb.{InfluxDBConnector, InfluxDBConsts}
 import org.apache.spark.sql.{ForeachWriter, Row}
 import org.influxdb.dto.Point
 
@@ -19,6 +20,8 @@ class InfluxDBSink(config:DriverConfiguration) extends ForeachWriter[Row] {
         .time(timestamp.getTime, TimeUnit.MILLISECONDS)
         .addField("value", row.getAs[Double]("value"))
         .tag("truck", row.getAs[String]("truck"))
+        .tag("jenkins_job",  System.getProperty(MonitorConsts.SPARK_DRIVER_UNIQUE_RUN_ID))
+        .tag("cluster_id",System.getProperty(MonitorConsts.SPARK_CLUSTER_ID))
         .build()
       InfluxDBConnector.getInfluxDB.write( config.getConfigString(InfluxDBConsts.INFLUXDB_DATABASE),
         InfluxDBConsts.INFLUXDB_RETENTION_POLICY, point)
