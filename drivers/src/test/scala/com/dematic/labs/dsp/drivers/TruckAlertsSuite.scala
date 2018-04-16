@@ -7,9 +7,11 @@ import java.util.{Collections, Properties}
 
 import com.dematic.labs.dsp.drivers.configuration.DriverUnitTestConfiguration
 import com.dematic.labs.dsp.drivers.trucks.TruckAlerts
+import com.dematic.labs.dsp.simulators.TestTruckProducer
 import info.batey.kafka.unit.KafkaUnit
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
 import org.awaitility.Awaitility.await
+import org.joda.time.DateTime
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
 import org.scalatest.{BeforeAndAfter, FunSuite}
@@ -61,7 +63,19 @@ class TruckAlertsSuite extends FunSuite with BeforeAndAfter {
     // 2) push sorter signals to kafka
     {
       Future {
+        val timestamp = DateTime.now()
+        // create a list of json messages to send
+        val jsonMessages: List[String] = List(
+          s"""{"truck":"H2X3501117","_timestamp":"$timestamp","channel":"T_motTemp_Lft","value":5.0}""",
+          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(1)}","channel":"T_motTemp_Lft","value":10.0}""",
+          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(2)}","channel":"T_motTemp_Lft","value":15.0}""",
+          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(3)}","channel":"T_motTemp_Lft","value":20.0}""",
+          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(4)}","channel":"T_motTemp_Lft","value":25.0}""",
+          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(5)}","channel":"T_motTemp_Lft","value":30.0}""",
+          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(6)}","channel":"T_motTemp_Lft","value":35.0}"""
+        )
 
+        new TestTruckProducer(kafkaServer.getKafkaConnect, "linde", jsonMessages)
       }
     }
 
