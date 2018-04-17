@@ -66,7 +66,7 @@ class TruckAlertsSuite extends FunSuite with BeforeAndAfter {
     // timestamp used for testing
     val timestamp = DateTime.now()
 
-    // 2) push sorter signals to kafka
+    // 2) push truck messages to kafka
     {
       Future {
         // create a list of json messages to send
