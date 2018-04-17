@@ -5,6 +5,8 @@ import java.nio.file.Paths
 import java.util.concurrent.{Callable, Executors, TimeUnit}
 import java.util.{Collections, Properties}
 
+import com.dematic.labs.dsp.data.Alert
+import com.dematic.labs.dsp.data.Utils.fromJson
 import com.dematic.labs.dsp.drivers.configuration.DriverUnitTestConfiguration
 import com.dematic.labs.dsp.drivers.trucks.TruckAlerts
 import com.dematic.labs.dsp.simulators.TestTruckProducer
@@ -90,14 +92,21 @@ class TruckAlertsSuite extends FunSuite with BeforeAndAfter {
       props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
       val kc: KafkaConsumer[String, String] = new KafkaConsumer[String, String](props)
 
+      import scala.collection.JavaConversions._
+
       // Subscribe to the topic.
       kc.subscribe(Collections.singletonList("alerts"))
-      // keep polling until signal count is complete
-      var alerts = 0
+      // keep polling until alerts are generated
       await().atMost(2, TimeUnit.MINUTES).until(new Callable[lang.Boolean] {
         override def call(): lang.Boolean = {
-          alerts = alerts + kc.poll(1000).count()
-          alerts == 2 // 2 alerts should have been created based on the json sent to the kafka topic
+          val consumerRecord = kc.poll(1000)
+          consumerRecord.foreach(record => {
+            val json: String = record.value()
+            // turn into an alert object to make it easier to get the # of alerts generated
+            val alerts = fromJson[Alert](json)
+            if (alerts.getAlerts == 2) return true
+          })
+          false // 2 alerts should have been created based on the json sent to the kafka topic
         }
       })
     }

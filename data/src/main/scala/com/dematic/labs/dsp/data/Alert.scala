@@ -73,5 +73,5 @@ class AlertValues(val _timestamp: String, @BeanProperty val value: String) {
     state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
   }
 
-  override def toString = s"AlertValues($_timestamp, $value)"
+  override def toString = s"AlertValues(${_timestamp}, $value)"
 }
