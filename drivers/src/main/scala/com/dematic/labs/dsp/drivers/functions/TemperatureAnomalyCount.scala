@@ -76,7 +76,7 @@ class TemperatureAnomalyCount extends UserDefinedAggregateFunction {
     var alerts = 0
     sortedValues.foreach(tuple => {
       val value = tuple.getDouble(1)
-      if (math.abs(value - min) > 10) {
+      if (value - min > 10) {
         alerts = alerts + 1
         // reset the min
         min = value
