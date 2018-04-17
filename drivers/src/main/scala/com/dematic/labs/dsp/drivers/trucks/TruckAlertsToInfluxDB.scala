@@ -1,5 +1,6 @@
 package com.dematic.labs.dsp.drivers.trucks
 
+import java.sql.Timestamp
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
@@ -10,9 +11,12 @@ import org.apache.spark.sql.streaming.Trigger._
 import org.apache.spark.sql.types._
 
 /**
-  * Puts temp messages from kafka topic to influxdb
+  * Simple data pusher, puts all truck topic alerts from kakfa to influxdb.
+  *
+  * Any changes to alert topic schema may potentially require change here.
+  *
   */
-object TruckTopicToInfluxDB {
+object TruckAlertsToInfluxDB {
   // should only be  used with testing
   private var injectedDriverConfiguration: DriverConfiguration = _
 
@@ -52,25 +56,29 @@ object TruckTopicToInfluxDB {
         .option("maxOffsetsPerTrigger", config.getKafkaMaxOffsetsPerTrigger)
         .load
 
-      // define the truck json schema
-      val schema: StructType = StructType(Seq(
-        StructField("truck", StringType, nullable = false),
-        StructField("_timestamp", TimestampType, nullable = false),
-        StructField("channel", StringType, nullable = false),
-        StructField("value", DoubleType, nullable = false)
-      ))
+      // define the alert json schema which has been flattened out below
+      val schema: StructType = new StructType().add("alert_time", new StructType().add("start", TimestampType)
+        .add("end", TimestampType))
+        .add("truck",StringType)
+        .add("alerts",LongType)
 
       import sparkSession.implicits._
 
-      // convert to json and select only channel 'T_motTemp_Lft'
-      val channels = kafka.selectExpr("cast (value as string) as json").
-        select(from_json($"json", schema) as "channels").
-        select("channels.*").
-        where("channel == 'T_motTemp_Lft'")
 
-      lazy val influxDBSink = new InfluxDBSink(config)
+      // use kafka write date for now instead of digging up the max of the "values" subtable
+      val alerts = kafka.selectExpr("cast (value as string) as json", "CAST(timestamp AS TIMESTAMP)").as[(String, Timestamp)].
+        select(from_json($"json", schema) as "alerts", $"timestamp").
+        select("alerts.*","timestamp")
+      val outputAlerts= alerts.select("truck","alerts","timestamp","alert_time.start","alert_time.end")
 
-      channels.writeStream
+      outputAlerts.writeStream
+        .format("console").queryName("truckAlertTableToConsole")
+        .outputMode("update")
+        .start
+
+      lazy val influxDBSink = new InfluxDBAlertSink(config)
+
+      outputAlerts.writeStream
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("checkpointLocation", config.getSparkCheckpointLocation)
         .queryName("influxDBTruckAlerts")
