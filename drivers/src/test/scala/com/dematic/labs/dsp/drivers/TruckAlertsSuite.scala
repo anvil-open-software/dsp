@@ -19,6 +19,7 @@ import org.junit.rules.TemporaryFolder
 import org.scalatest.{BeforeAndAfter, FunSuite}
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.language.reflectiveCalls
@@ -62,10 +63,12 @@ class TruckAlertsSuite extends FunSuite with BeforeAndAfter {
       })
     }
 
+    // timestamp used for testing
+    val timestamp = DateTime.now()
+
     // 2) push sorter signals to kafka
     {
       Future {
-        val timestamp = DateTime.now()
         // create a list of json messages to send
         val jsonMessages: List[String] = List(
           s"""{"truck":"H2X3501117","_timestamp":"$timestamp","channel":"T_motTemp_Lft","value":5.0}""",
@@ -82,20 +85,18 @@ class TruckAlertsSuite extends FunSuite with BeforeAndAfter {
     }
 
     // 3) create a kafka consumer and ensure alerts were created and sent to kafka alert topic
+    val props = new Properties
+    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaServer.getKafkaConnect)
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer")
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer")
+    props.put(ConsumerConfig.GROUP_ID_CONFIG, "TruckAlertsSuite")
+    props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true")
+    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+    val kc: KafkaConsumer[String, String] = new KafkaConsumer[String, String](props)
+    // Subscribe to the topic.
+    kc.subscribe(Collections.singletonList("alerts"))
+
     {
-      val props = new Properties
-      props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaServer.getKafkaConnect)
-      props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer")
-      props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer")
-      props.put(ConsumerConfig.GROUP_ID_CONFIG, "TruckAlertsSuite")
-      props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true")
-      props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-      val kc: KafkaConsumer[String, String] = new KafkaConsumer[String, String](props)
-
-      import scala.collection.JavaConversions._
-
-      // Subscribe to the topic.
-      kc.subscribe(Collections.singletonList("alerts"))
       // keep polling until alerts are generated
       await().atMost(2, TimeUnit.MINUTES).until(new Callable[lang.Boolean] {
         override def call(): lang.Boolean = {
@@ -104,7 +105,31 @@ class TruckAlertsSuite extends FunSuite with BeforeAndAfter {
             val json: String = record.value()
             // turn into an alert object to make it easier to get the # of alerts generated
             val alerts = fromJson[Alert](json)
-            if (alerts.getAlerts == 2) return true
+            if (alerts.getAlerts == 2 && alerts.getValues.size == 7) return true
+          })
+          false // 2 alerts should have been created based on the json sent to the kafka topic
+        }
+      })
+    }
+
+    // 4) add a new message with decreasing value and ensure the alert doesn't get created
+    {
+      Future {
+        // send a message with a drop of more then 10 degrees,
+        val jsonMessages: List[String] = List(
+          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(7)}","channel":"T_motTemp_Lft","value":5.0}""")
+        new TestTruckProducer(kafkaServer.getKafkaConnect, "linde", jsonMessages)
+      }
+
+      // ensure the alert was sent and a new alert wasn't generated
+      await().atMost(2, TimeUnit.MINUTES).until(new Callable[lang.Boolean] {
+        override def call(): lang.Boolean = {
+          val consumerRecord = kc.poll(1000)
+          consumerRecord.foreach(record => {
+            val json: String = record.value()
+            // turn into an alert object to make it easier to get the # of alerts generated
+            val alerts = fromJson[Alert](json)
+            if (alerts.getAlerts == 2 && alerts.getValues.size == 8) return true
           })
           false // 2 alerts should have been created based on the json sent to the kafka topic
         }
