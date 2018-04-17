@@ -9,6 +9,7 @@ import org.apache.spark.sql.types._
 import scala.collection.mutable.ListBuffer
 
 class TemperatureAnomalyCount extends UserDefinedAggregateFunction {
+
   // This is the input fields for your aggregate function
   override def inputSchema: org.apache.spark.sql.types.StructType =
     StructType(
@@ -80,6 +81,8 @@ class TemperatureAnomalyCount extends UserDefinedAggregateFunction {
         // reset the min
         min = value
       }
+      // reset the min if needed
+      if (value < min) min = value
     })
     alerts
   }
