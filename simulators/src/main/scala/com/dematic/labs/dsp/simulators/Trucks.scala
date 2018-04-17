@@ -25,7 +25,7 @@ import scala.util.control.NonFatal
 /**
   *
   * To debug topic directly from kafka, use console consumer, i.e.:
-  * $KAFKA_HOME/bin/kafka-console-consumer.sh --bootstrap-server '10.207.222.11:9092,10.207.222.12:9092' --topic ccd_truck_temp
+  * $KAFKA_HOME/bin/kafka-console-consumer.sh --bootstrap-server '10.207.222.11:9092,10.207.222.12:9092' --topic icd_truck_temp
   */
 object Trucks extends App {
   val logger: Logger = LoggerFactory.getLogger("Trucks")
