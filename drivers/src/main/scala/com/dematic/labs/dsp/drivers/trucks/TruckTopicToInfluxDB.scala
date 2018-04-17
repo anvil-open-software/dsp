@@ -10,7 +10,7 @@ import org.apache.spark.sql.streaming.Trigger._
 import org.apache.spark.sql.types._
 
 /**
-  * Puts temp messages from kakfa topic to influxdb
+  * Puts temp messages from kafka topic to influxdb
   */
 object TruckTopicToInfluxDB {
   // should only be  used with testing
