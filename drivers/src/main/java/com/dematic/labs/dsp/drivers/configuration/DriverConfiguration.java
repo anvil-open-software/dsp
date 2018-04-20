@@ -1,7 +1,7 @@
 package com.dematic.labs.dsp.drivers.configuration;
 
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory; 
+import com.typesafe.config.ConfigFactory;
 
 import java.io.File;
 import java.io.Serializable;
@@ -16,6 +16,8 @@ public abstract class DriverConfiguration implements Serializable {
         private static final String SPARK_SHUFFLE_PARTITION_KEY = "spark.sql.shuffle.partition";
         private static final String SPARK_OUTPUT_MODE_KEY = "spark.output.mode";
         private static final String SPARK_WATERMARK_TIME_KEY = "spark.watermark.time";
+        private static final String SPARK_WINDOW_DURATION__KEY = "spark.window.duration";
+        private static final String SPARK_WINDOW_SLIDE_DURATION__KEY = "spark.window.slide.duration";
         private static final String SPARK_QUERY_TRIGGER_KEY = "spark.query.trigger";
         private static final String SPARK_CASSANDRA_CONNECTION_HOST_KEY = "spark.cassandra.connection.host";
         private static final String SPARK_CASSANDRA_CONNECTION_PORT_KEY = "spark.cassandra.connection.port";
@@ -41,6 +43,8 @@ public abstract class DriverConfiguration implements Serializable {
         private String sparkShufflePartition;
         private String sparkOutputMode;
         private String sparkWatermarkTime;
+        private String sparkWindowDuration;
+        private String sparkWindowSlideDuration;
         private String sparkQueryTrigger;
         private String sparkCassandraConnectionHost;
         private String sparkCassandraConnectionPort;
@@ -75,6 +79,8 @@ public abstract class DriverConfiguration implements Serializable {
             sparkShufflePartition = config.getString(SPARK_SHUFFLE_PARTITION_KEY);
             sparkOutputMode = config.getString(SPARK_OUTPUT_MODE_KEY);
             sparkWatermarkTime = config.getString(SPARK_WATERMARK_TIME_KEY);
+            sparkWindowDuration = config.getString(SPARK_WINDOW_DURATION__KEY);
+            sparkWindowSlideDuration = config.getString(SPARK_WINDOW_SLIDE_DURATION__KEY);
             sparkQueryTrigger = config.getString(SPARK_QUERY_TRIGGER_KEY);
             sparkCassandraConnectionHost = config.getString(SPARK_CASSANDRA_CONNECTION_HOST_KEY);
             sparkCassandraConnectionPort = config.getString(SPARK_CASSANDRA_CONNECTION_PORT_KEY);
@@ -102,6 +108,8 @@ public abstract class DriverConfiguration implements Serializable {
     private final String sparkShufflePartition;
     private final String sparkOutputMode;
     private final String sparkWatermarkTime;
+    private final String sparkWindowDuration;
+    private final String sparkWindowSlideDuration;
     private final String sparkQueryTrigger;
     private final String sparkCassandraConnectionHost;
     private final String sparkCassandraConnectionPort;
@@ -126,6 +134,8 @@ public abstract class DriverConfiguration implements Serializable {
         sparkShufflePartition = builder.sparkShufflePartition;
         sparkOutputMode = builder.sparkOutputMode;
         sparkWatermarkTime = builder.sparkWatermarkTime;
+        sparkWindowDuration = builder.sparkWindowDuration;
+        sparkWindowSlideDuration = builder.sparkWindowSlideDuration;
         sparkQueryTrigger = builder.sparkQueryTrigger;
         sparkCassandraConnectionHost = builder.sparkCassandraConnectionHost;
         sparkCassandraConnectionPort = builder.sparkCassandraConnectionPort;
@@ -142,7 +152,6 @@ public abstract class DriverConfiguration implements Serializable {
     }
 
     /**
-     *
      * @param inKey
      * @return use for any config that is NOT defined statically above
      */
@@ -176,6 +185,14 @@ public abstract class DriverConfiguration implements Serializable {
 
     public String getSparkWatermarkTime() {
         return sparkWatermarkTime;
+    }
+
+    public String getSparkWindowDuration() {
+        return sparkWindowDuration;
+    }
+
+    public String getSparkWindowSlideDuration() {
+        return sparkWindowSlideDuration;
     }
 
     public String getSparkQueryTrigger() {
@@ -235,6 +252,8 @@ public abstract class DriverConfiguration implements Serializable {
                 ", sparkShufflePartition='" + sparkShufflePartition + '\'' +
                 ", sparkOutputMode='" + sparkOutputMode + '\'' +
                 ", sparkWatermarkTime='" + sparkWatermarkTime + '\'' +
+                ", sparkWindowDuration='" + sparkWindowDuration + '\'' +
+                ", sparkWindowSlideDuration='" + sparkWindowSlideDuration + '\'' +
                 ", sparkQueryTrigger='" + sparkQueryTrigger + '\'' +
                 ", sparkCassandraConnectionHost='" + sparkCassandraConnectionHost + '\'' +
                 ", sparkCassandraConnectionPort='" + sparkCassandraConnectionPort + '\'' +
@@ -247,6 +266,7 @@ public abstract class DriverConfiguration implements Serializable {
                 ", kafkaStartingOffsets='" + kafkaStartingOffsets + '\'' +
                 ", kafkaMaxOffsetsPerTrigger='" + kafkaMaxOffsetsPerTrigger + '\'' +
                 ", cassandraKeyspace='" + cassandraKeyspace + '\'' +
+                ", config=" + config +
                 '}';
     }
 }

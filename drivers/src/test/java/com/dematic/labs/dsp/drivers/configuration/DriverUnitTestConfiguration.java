@@ -44,7 +44,7 @@ public final class DriverUnitTestConfiguration extends DriverConfiguration {
     private final String sparkCassandraConnectionPort;
     private final String kafkaBootstrapServers;
 
-    DriverUnitTestConfiguration(final Builder builder) {
+    private DriverUnitTestConfiguration(final Builder builder) {
         super(builder);
         // if not overridden, get defaults
         sparkCheckpointLocation = builder.sparkCheckpointLocation != null ? builder.sparkCheckpointLocation :
