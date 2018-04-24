@@ -187,13 +187,9 @@ public abstract class DriverConfiguration implements Serializable {
         return sparkWatermarkTime;
     }
 
-    public String getSparkWindowDuration() {
-        return sparkWindowDuration;
-    }
+    public String getSparkWindowDuration() { return sparkWindowDuration; }
 
-    public String getSparkWindowSlideDuration() {
-        return sparkWindowSlideDuration;
-    }
+    public String getSparkWindowSlideDuration() { return sparkWindowSlideDuration; }
 
     public String getSparkQueryTrigger() {
         return sparkQueryTrigger;
