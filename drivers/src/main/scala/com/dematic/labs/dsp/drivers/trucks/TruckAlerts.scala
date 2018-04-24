@@ -38,7 +38,7 @@ object TruckAlerts {
         config.getDriverAppName))
     }
 
-    val temperatureAnomalyCount = new TemperatureAnomalyCount
+    val temperatureAnomalyCount = new TemperatureAnomalyCount(config.getDriverAlertThreshold)
 
     // create the kafka input source
     try {
