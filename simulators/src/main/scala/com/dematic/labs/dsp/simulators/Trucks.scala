@@ -34,8 +34,9 @@ object Trucks extends App {
   private val config: TruckConfiguration = new TruckConfiguration.Builder().build
 
   // create the connection to influxDb with more generous timeout instead of default 10 seconds
-  val builder = new OkHttpClient.Builder().readTimeout(120, TimeUnit.SECONDS)
+  val builder = new OkHttpClient.Builder().readTimeout(180, TimeUnit.SECONDS)
     .connectTimeout(120, TimeUnit.SECONDS)
+    .writeTimeout(180, TimeUnit.SECONDS)
   private val influxDB: InfluxDB = InfluxDBFactory.connect(config.getUrl,
     config.getUsername, config.getPassword, builder)
   // shared kafka producer, used for batching and compression
