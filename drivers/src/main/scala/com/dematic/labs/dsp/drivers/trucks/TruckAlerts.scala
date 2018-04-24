@@ -68,8 +68,8 @@ object TruckAlerts {
 
       // group by 1 hour and truck and find min/max and trigger an alert if condition is meet
       val alerts = channels.
-        withWatermark("_timestamp", "1 minutes"). // only keep old data for 1 minutes for late updates
-        groupBy(window('_timestamp, "60 minutes") as "alert_time", 'truck).
+        withWatermark("_timestamp", config.getSparkWatermarkTime). // time to keep data around
+        groupBy(window('_timestamp, config.getSparkWindowDuration, config.getSparkWindowSlideDuration) as "alert_time", 'truck).
         agg(temperatureAnomalyCount('_timestamp, 'value) as "alerts", sort_array(collect_list(struct('_timestamp, 'value))) as "values").
         withColumn("processing_time", current_timestamp()).
         where('alerts > 0)

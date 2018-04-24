@@ -20,6 +20,8 @@ class DriverConfigurationSuite extends FunSuite {
     assert(config.getSparkCheckpointLocation === "/tmp/checkpoint")
     // from reference.conf
     assert(config.getSparkQueryTrigger === "0 seconds")
+    assert(config.getSparkWindowDuration === "60 minutes")
+    assert(config.getSparkWindowSlideDuration === "60 minutes")
     // kafka properties
     // from persister.conf
     assert(config.getKafkaBootstrapServers === "localhost:9092")
