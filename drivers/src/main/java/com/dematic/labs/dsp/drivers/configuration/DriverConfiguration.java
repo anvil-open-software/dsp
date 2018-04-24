@@ -10,6 +10,7 @@ public abstract class DriverConfiguration implements Serializable {
     public static abstract class Builder {
         // Driver Keys
         private static final String DRIVER_APP_NAME_KEY = "driver.appName";
+        private static final String DRIVER_ALERT_THRESHOLD_KEY = "driver.alert.threshold ";
         // Spark Keys
         private static final String SPARK_MASTER_KEY = "spark.master";
         private static final String SPARK_CHECKPOINT_KEY = "spark.sql.streaming.checkpointLocation";
@@ -37,6 +38,7 @@ public abstract class DriverConfiguration implements Serializable {
         private Config config;
         // driver properties
         private String driverAppName;
+        private int driverAlertThreshold;
         // spark properties
         private String sparkMaster;
         private String sparkCheckpointLocation;
@@ -72,8 +74,8 @@ public abstract class DriverConfiguration implements Serializable {
         }
 
         private void initializeConfigurationProperties() {
-
             driverAppName = config.getString(DRIVER_APP_NAME_KEY);
+            driverAlertThreshold = config.getInt(DRIVER_ALERT_THRESHOLD_KEY);
             sparkMaster = config.getString(SPARK_MASTER_KEY);
             sparkCheckpointLocation = config.getString(SPARK_CHECKPOINT_KEY);
             sparkShufflePartition = config.getString(SPARK_SHUFFLE_PARTITION_KEY);
@@ -93,15 +95,14 @@ public abstract class DriverConfiguration implements Serializable {
             kafkaStartingOffsets = config.getString(KAFKA_STARTING_OFFSETS_KEY);
             kafkaMaxOffsetsPerTrigger = config.getString(KAFKA_MAX_OFFSETS_PER_TRIGGER_KEY);
             cassandraKeyspace = config.getString(CASSANDRA_KEYSPACE_KEY);
-
         }
-
 
         public abstract DriverConfiguration build();
     }
 
     // driver properties
     private final String driverAppName;
+    private final int driverAlertThreshold;
     // spark properties
     private final String sparkMaster;
     private final String sparkCheckpointLocation;
@@ -129,6 +130,7 @@ public abstract class DriverConfiguration implements Serializable {
 
     DriverConfiguration(final DriverConfiguration.Builder builder) {
         driverAppName = builder.driverAppName;
+        driverAlertThreshold = builder.driverAlertThreshold;
         sparkMaster = builder.sparkMaster;
         sparkCheckpointLocation = builder.sparkCheckpointLocation;
         sparkShufflePartition = builder.sparkShufflePartition;
@@ -166,6 +168,8 @@ public abstract class DriverConfiguration implements Serializable {
     public String getDriverAppName() {
         return driverAppName;
     }
+
+    public int getDriverAlertThreshold() { return driverAlertThreshold; }
 
     public String getSparkMaster() {
         return sparkMaster;
@@ -243,6 +247,7 @@ public abstract class DriverConfiguration implements Serializable {
     public String toString() {
         return "DriverConfiguration{" +
                 "driverAppName='" + driverAppName + '\'' +
+                ", driverAlertThreshold='" + driverAlertThreshold + '\'' +
                 ", sparkMaster='" + sparkMaster + '\'' +
                 ", sparkCheckpointLocation='" + sparkCheckpointLocation + '\'' +
                 ", sparkShufflePartition='" + sparkShufflePartition + '\'' +
