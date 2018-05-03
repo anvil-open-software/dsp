@@ -7,13 +7,14 @@ import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, D
 import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.streaming.{GroupState, GroupStateTimeout}
 import org.apache.spark.sql.types.DataTypes.StringType
 import org.apache.spark.sql.types.{DoubleType, StructField, StructType, TimestampType}
 
 import scala.collection.mutable.ListBuffer
 
-object StatefulTruckAlert {
+object StatefulTruckAlerts {
   // should only be  used with testing
   private var injectedDriverConfiguration: DriverConfiguration = _
 
@@ -68,7 +69,6 @@ object StatefulTruckAlert {
         where("channel == 'T_motTemp_Lft'").
         as[Truck]
 
-
       // group by truck id and trigger an alert if condition is meet
       val alerts = channels.
         groupByKey(_.truck).
@@ -77,91 +77,87 @@ object StatefulTruckAlert {
         case (truck: String, trucks: Iterator[Truck], state: GroupState[TruckState]) =>
           // If timed out, then remove session and send final update
           if (state.hasTimedOut) {
-            val finalAlertUpdate = Alerts(truck, state.get.alertCount, state.get.alertValues, expired = true)
+            val finalAlertUpdate = Alerts(truck, state.get.count, state.get.alerts, state.get.measurements,
+              expired = true)
             state.remove()
             finalAlertUpdate
           } else {
             // Update state
             val truckUpdate = if (state.exists) {
-
               val oldSession = state.get
-              TruckState(oldSession.trucks ++ trucks.toList)
-
+              TruckState(oldSession.trucks ++ trucks.toList, config.getDriverAlertThreshold)
             } else {
-              TruckState(trucks.toList)
+              TruckState(trucks.toList, config.getDriverAlertThreshold)
             }
-
             state.update(truckUpdate)
-
             //todo: figure out: Set timeout such that the session will be expired if no data received for 10 seconds
             //   state.setTimeoutDuration("5 seconds")
-            Alerts(truck, state.get.alertCount, state.get.alertValues, expired = false)
-
+            Alerts(truck, state.get.count, state.get.alerts, state.get.measurements, expired = false)
           }
-      }.where("alerts > 0")
+      }.withColumn("processing_time", current_timestamp()).where("count > 0")
 
       // Start running the query that prints the session updates to the console
       alerts
+        .selectExpr("to_json(struct(processing_time, truck, alerts, measurements)) as json")
         .writeStream
-        .outputMode("update")
-        .format("console")
-        .start()
-
-
-      // write results to kafka
-
-
+        .format("kafka")
+        .queryName("truckAlerts")
+        .trigger(ProcessingTime(config.getSparkQueryTrigger))
+        .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
+        .option("topic", config.getKafkaOutputTopics)
+        .option("checkpointLocation", config.getSparkCheckpointLocation)
+        .outputMode(config.getSparkOutputMode)
+        .start
       // keep alive
       sparkSession.streams.awaitAnyTermination
     } finally
       sparkSession.close
   }
-
 }
 
-/** User-defined data type representing the input events */
+// Defines the measurement, alert, and alerts, really just used to define the key in the json
+case class Measurement(_timestamp: Timestamp, value: Double)
+
+case class Alert(min: Measurement, max: Measurement)
+
+//case class Alerts(alerts: List[Alert])
+
+// User-defined data type representing the input events
 case class Truck(truck: String, _timestamp: Timestamp, value: Double)
 
-/**
-  * User-defined data type for storing a truck information as state in mapGroupsWithState.
-  *
-  */
-case class TruckState(trucks: List[Truck]) {
-  private val points = new ListBuffer[((Timestamp, Double), (Timestamp, Double))]()
-  private val values = new ListBuffer[(Timestamp, Double)]()
+// User-defined data type for storing a truck information as state in mapGroupsWithState
+case class TruckState(trucks: List[Truck], threshold: Int) {
+  private val alertBuffer = new ListBuffer[Alert]()
+  private val measurementBuffer = new ListBuffer[Measurement]()
 
   // set initial min value and time
   val initialTruck: Truck = trucks.head
-  private var min = (initialTruck._timestamp, initialTruck.value)
+  private var min = Measurement(initialTruck._timestamp, initialTruck.value)
 
   trucks.foreach(truck => {
     // check for alerts and collect alert points
-    val currentTruck = (truck._timestamp, truck.value)
-    if (currentTruck._2 - min._2 > 10) {
-      points += Tuple2(min, currentTruck)
+    val currentTruck = Measurement(truck._timestamp, truck.value)
+    if (currentTruck.value - min.value > threshold) {
+      alertBuffer += Alert(min, currentTruck)
       // reset the min to the current truck that caused the alert
       min = currentTruck
     }
     // if current value is < existing min, reset the min
-    if (currentTruck._2 < min._2) min = currentTruck
+    if (currentTruck.value < min.value) min = currentTruck
     // collect all the values
-    values += Tuple2(truck._timestamp, truck.value)
+    measurementBuffer += Measurement(truck._timestamp, truck.value)
   })
 
+  def count: Long = alerts.size
 
-  def alertCount: Long = points.size / 2
+  def alerts: List[Alert] = alertBuffer.toList
 
-  def alertPoints: ListBuffer[((Timestamp, Double), (Timestamp, Double))] = points
-
-  def alertValues: List[(Timestamp, Double)] = values.toList
+  def measurements: List[Measurement] = measurementBuffer.toList
 }
 
-
-/**
-  * User-defined data type representing the update information returned by mapGroupsWithState.
-  *
-  */
+// User-defined data type representing the update information returned by mapGroupsWithState
 case class Alerts(truck: String,
-                  alerts: Long,
-                  values: List[(Timestamp, Double)],
+                  count: Long,
+                  alerts: List[Alert],
+                  measurements: List[Measurement],
                   expired: Boolean)
