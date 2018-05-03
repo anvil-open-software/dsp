@@ -101,7 +101,7 @@ object StatefulTruckAlerts {
         .selectExpr("to_json(struct(processing_time, truck, alerts, measurements)) as json")
         .writeStream
         .format("kafka")
-        .queryName("truckAlerts")
+        .queryName("statefulTruckAlerts")
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
         .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
         .option("topic", config.getKafkaOutputTopics)
@@ -119,8 +119,6 @@ object StatefulTruckAlerts {
 case class Measurement(_timestamp: Timestamp, value: Double)
 
 case class Alert(min: Measurement, max: Measurement)
-
-//case class Alerts(alerts: List[Alert])
 
 // User-defined data type representing the input events
 case class Truck(truck: String, _timestamp: Timestamp, value: Double)
