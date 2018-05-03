@@ -98,7 +98,7 @@ object StatefulTruckAlerts {
 
       // Start running the query that prints the session updates to the console
       alerts
-        .selectExpr("to_json(struct(processing_time, truck, alerts, measurements)) as json")
+        .selectExpr("to_json(struct(processing_time, truck, alerts, measurements)) AS value")
         .writeStream
         .format("kafka")
         .queryName("statefulTruckAlerts")
