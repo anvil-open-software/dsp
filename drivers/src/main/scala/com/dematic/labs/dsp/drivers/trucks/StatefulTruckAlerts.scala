@@ -128,11 +128,19 @@ case class TruckState(trucks: List[Truck], threshold: Int) {
   private val alertBuffer = new ListBuffer[Alert]()
   private val measurementBuffer = new ListBuffer[Measurement]()
 
+  //noinspection ConvertExpressionToSAM
+  // sort the trucks based on timestamp
+  implicit def ordered: Ordering[Timestamp] = new Ordering[Timestamp] {
+    def compare(x: Timestamp, y: Timestamp): Int = x compareTo y
+  }
+
+  val sortedTrucks: List[Truck] = trucks sortBy (truck => truck._timestamp)
+
   // set initial min value and time
-  val initialTruck: Truck = trucks.head
+  val initialTruck: Truck = sortedTrucks.head
   private var min = Measurement(initialTruck._timestamp, initialTruck.value)
 
-  trucks.foreach(truck => {
+  sortedTrucks.foreach(truck => {
     // check for alerts and collect alert points
     val currentTruck = Measurement(truck._timestamp, truck.value)
     if (currentTruck.value - min.value > threshold) {
