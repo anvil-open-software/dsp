@@ -77,8 +77,7 @@ object StatefulTruckAlerts {
         case (truck: String, trucks: Iterator[Truck], state: GroupState[TruckState]) =>
           // If timed out, then remove session and send final update
           if (state.hasTimedOut) {
-            val finalAlertUpdate = Alerts(truck, state.get.count, state.get.alerts, state.get.measurements,
-              expired = true)
+            val finalAlertUpdate = Alerts(truck, state.get.count, state.get.alerts, state.get.measurements)
             state.remove()
             finalAlertUpdate
           } else {
@@ -91,8 +90,8 @@ object StatefulTruckAlerts {
             }
             state.update(truckUpdate)
             //todo: figure out: Set timeout such that the session will be expired if no data received for 10 seconds
-            //   state.setTimeoutDuration("5 seconds")
-            Alerts(truck, state.get.count, state.get.alerts, state.get.measurements, expired = false)
+            // state.setTimeoutDuration("5 seconds")
+            Alerts(truck, state.get.count, state.get.alerts, state.get.measurements)
           }
       }.withColumn("processing_time", current_timestamp()).where("count > 0")
 
@@ -165,5 +164,4 @@ case class TruckState(trucks: List[Truck], threshold: Int) {
 case class Alerts(truck: String,
                   count: Long,
                   alerts: List[Alert],
-                  measurements: List[Measurement],
-                  expired: Boolean)
+                  measurements: List[Measurement])
