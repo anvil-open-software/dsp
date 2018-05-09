@@ -71,9 +71,9 @@ object StatefulTruckAlerts {
 
       // group by truck id and trigger an alert if condition is meet
       val alerts = channels.
-        withWatermark("_timestamp", "1 hours").
+        withWatermark("_timestamp", "60 minutes"). // how late the data can be before it is dropped
         groupByKey(_.truck).
-        mapGroupsWithState[TruckState, Alerts](GroupStateTimeout.EventTimeTimeout()) {
+        mapGroupsWithState[TruckState, Alerts](GroupStateTimeout.EventTimeTimeout) {
 
         case (truck: String, trucks: Iterator[Truck], state: GroupState[TruckState]) =>
           // If timed out, then remove session and send final update
@@ -90,6 +90,10 @@ object StatefulTruckAlerts {
               TruckState(trucks.toList, config.getDriverAlertThreshold)
             }
             state.update(truckUpdate)
+            // set the timeout to be last timestamp plus 60 min, a Timeout will eventually occur when there is a trigger
+            // in the query, after X ms, basically, a Timeout occurs when the grouped key has not received any new data
+            // and the time set of 60 min has elapsed
+            state.setTimeoutTimestamp(truckUpdate.measurements.last._timestamp.getTime + 60 * 60 * 1000)
             Alerts(truck, state.get.count, state.get.alerts, state.get.measurements)
           }
       }.withColumn("processing_time", current_timestamp()).where("count > 0")
