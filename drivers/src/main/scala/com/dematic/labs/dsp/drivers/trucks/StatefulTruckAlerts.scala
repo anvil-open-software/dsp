@@ -1,6 +1,7 @@
 package com.dematic.labs.dsp.drivers.trucks
 
 import java.sql.Timestamp
+import java.time.Duration
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
@@ -83,17 +84,17 @@ object StatefulTruckAlerts {
             finalAlertUpdate
           } else {
             // Update state
-            val truckUpdate = if (state.exists) {
+            val truckStateUpdate = if (state.exists) {
               val oldSession = state.get
               TruckState(oldSession.trucks ++ trucks.toList, config.getDriverAlertThreshold)
             } else {
               TruckState(trucks.toList, config.getDriverAlertThreshold)
             }
-            state.update(truckUpdate)
+            state.update(truckStateUpdate)
             // set the timeout to be last timestamp plus 60 min, a Timeout will eventually occur when there is a trigger
             // in the query, after X ms, basically, a Timeout occurs when the grouped key has not received any new data
             // and the time set of 60 min has elapsed
-            state.setTimeoutTimestamp(truckUpdate.measurements.last._timestamp.getTime + 60 * 60 * 1000)
+            state.setTimeoutTimestamp(truckStateUpdate.measurements.last._timestamp.getTime + 60 * 60 * 1000)
             Alerts(truck, state.get.count, state.get.alerts, state.get.measurements)
           }
       }.withColumn("processing_time", current_timestamp()).where("count > 0")
@@ -136,25 +137,32 @@ case class TruckState(trucks: List[Truck], threshold: Int) {
     def compare(x: Timestamp, y: Timestamp): Int = x compareTo y
   }
 
-  val sortedTrucks: List[Truck] = trucks sortBy (truck => truck._timestamp)
+  if (trucks.nonEmpty) {
+    val sortedTrucks: List[Truck] = trucks sortBy (truck => truck._timestamp)
 
-  // set initial min value and time
-  val initialTruck: Truck = sortedTrucks.head
-  private var min = Measurement(initialTruck._timestamp, initialTruck.value)
+    // set initial min value and time
+    val initialTruck: Truck = sortedTrucks.head
+    val lastTruck: Truck = sortedTrucks.last
+    // min measurement
+    var min = Measurement(initialTruck._timestamp, initialTruck.value)
 
-  sortedTrucks.foreach(truck => {
-    // check for alerts and collect alert points
-    val currentTruck = Measurement(truck._timestamp, truck.value)
-    if (currentTruck.value - min.value > threshold) {
-      alertBuffer += Alert(min, currentTruck)
-      // reset the min to the current truck that caused the alert
-      min = currentTruck
-    }
-    // if current value is < existing min, reset the min
-    if (currentTruck.value < min.value) min = currentTruck
-    // collect all the values
-    measurementBuffer += Measurement(truck._timestamp, truck.value)
-  })
+    // filter out trucks where their event time is more then 1 hour
+    sortedTrucks.filter(truck =>
+      Duration.between(truck._timestamp.toLocalDateTime, lastTruck._timestamp.toLocalDateTime).toHours < 1).
+      foreach(truck => {
+        // check for alerts and collect alert points
+        val currentTruck = Measurement(truck._timestamp, truck.value)
+        if (currentTruck.value - min.value > threshold) {
+          alertBuffer += Alert(min, currentTruck)
+          // reset the min to the current truck that caused the alert
+          min = currentTruck
+        }
+        // if current value is < existing min, reset the min
+        if (currentTruck.value < min.value) min = currentTruck
+        // collect all the values
+        measurementBuffer += Measurement(truck._timestamp, truck.value)
+      })
+  }
 
   def count: Long = alerts.size
 
