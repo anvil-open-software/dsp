@@ -9,5 +9,5 @@ package com.dematic.labs.dsp.simulators.configuration
 
 object PartitionStrategy extends Enumeration {
     type PartitionStrategy = Value
-    val random_per_request, default_keyed_partition = Value
+    val RANDOM_PER_REQUEST, DEFAULT_KEYED_PARTITION = Value
 }

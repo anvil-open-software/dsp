@@ -7,7 +7,7 @@ import java.util
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeUnit.MINUTES
 
-import com.dematic.labs.dsp.simulators.configuration.TruckConfiguration
+import com.dematic.labs.dsp.simulators.configuration.{PartitionStrategy, TruckConfiguration}
 import com.dematic.labs.toolkit_bigdata.simulators.CountdownTimer
 import com.google.common.util.concurrent.RateLimiter
 import monix.eval.Task
@@ -173,10 +173,9 @@ object Trucks extends App {
       if (TrucksFilter.shouldSend(sendAnomalies, anomalyThreshhold, previousValue, currentValue, nextValue)) {
 
         config.getPartitionStrategy match {
-          case default_keyed_partition => producer.send(new ProducerRecord[String, AnyRef](config.getTopics, truckId, json.getBytes(Charset.defaultCharset())))
+          case PartitionStrategy.DEFAULT_KEYED_PARTITION => producer.send(new ProducerRecord[String, AnyRef](config.getTopics, truckId, json.getBytes(Charset.defaultCharset())))
 
-
-          // default is random per transaction which can cause shuffles if order is needed
+          // random per transaction which can cause shuffles if order is needed
           case _ => producer.send(new ProducerRecord[String, AnyRef](config.getTopics, truckId, json.getBytes(Charset.defaultCharset())))
         }
 
