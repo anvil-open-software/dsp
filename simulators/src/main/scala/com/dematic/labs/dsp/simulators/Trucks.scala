@@ -101,7 +101,7 @@ object Trucks extends App {
     var tasks: List[Task[Unit]] = List()
     for (truckId <- lowTruckRange to highTruckRange) {
       tasks = tasks :+ Task {
-        dispatchTruck(s"${config.getId}$truckId", countdownTimer)
+          dispatchTruck(s"${config.getId}$truckId", countdownTimer)
       }
     }
 
@@ -159,11 +159,10 @@ object Trucks extends App {
             logger.warn("Sleeping during gap for " + truckId + " for " + historicalGapMs + " ms")
             Thread.sleep(historicalGapMs)
           }
-        } catch{
-          case NonFatal(ex) => logger.error("InfluxDB time not parseable value="+currentValue, ex)
+        } catch {
+          case NonFatal(ex) => logger.error("InfluxDB time not parseable value=" + currentValue, ex)
         }
       }
-
 
       // create the json
       val json =
@@ -172,7 +171,15 @@ object Trucks extends App {
       rateLimiter.acquire()
       // send to kafka
       if (TrucksFilter.shouldSend(sendAnomalies, anomalyThreshhold, previousValue, currentValue, nextValue)) {
-        producer.send(new ProducerRecord[String, AnyRef](config.getTopics, json.getBytes(Charset.defaultCharset())))
+
+        config.getPartitionStrategy match {
+          case default_keyed_partition => producer.send(new ProducerRecord[String, AnyRef](config.getTopics, truckId, json.getBytes(Charset.defaultCharset())))
+
+
+          // default is random per transaction which can cause shuffles if order is needed
+          case _ => producer.send(new ProducerRecord[String, AnyRef](config.getTopics, truckId, json.getBytes(Charset.defaultCharset())))
+        }
+
       } else {
         logger.warn("Skipping point anomaly for " + truckId + ":" + previousValue + "," + currentValue)
       }
