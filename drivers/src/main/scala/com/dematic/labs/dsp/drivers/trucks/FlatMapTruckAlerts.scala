@@ -81,7 +81,6 @@ object FlatMapTruckAlerts {
 
     val first = trucks.head
     val last = trucks.last
-    // todo: think about not operating on the entire list evertime...
 
     // min changes over time as we go through the list of truck values
     var newMin: Measurement = null
@@ -89,7 +88,6 @@ object FlatMapTruckAlerts {
     if (isTimeWithInHour(first._timestamp, last._timestamp)) {
       newMin = calculateAlertsInHour(min, trucks, truckBuffer, alertBuffer)
     }
-
     AlertWrapper(newMin, truckBuffer.toList, alertBuffer.iterator)
   }
 
@@ -99,16 +97,18 @@ object FlatMapTruckAlerts {
     trucks.foreach(t => {
       // first, always add to stateful truck list
       truckBuffer += t
-      // then calculate alerts if they exist
-      val currentTruck = Measurement(t._timestamp, t.value)
-      if (currentTruck.value - newMin.value > 10) {
-        // create alert and reset min
-        alertBuffer += AlertRow(t.truck, Alert(newMin, currentTruck),
-          truckBuffer.toList.map((t: Truck) => Measurement(t._timestamp, t.value)): List[Measurement])
-        newMin = currentTruck
+      if (t._timestamp.after(newMin._timestamp)) {
+        // then calculate alerts if they exist
+        val currentTruck = Measurement(t._timestamp, t.value)
+        if (currentTruck.value - newMin.value > 10) {
+          // create alert and reset min
+          alertBuffer += AlertRow(t.truck, Alert(newMin, currentTruck),
+            truckBuffer.toList.map((t: Truck) => Measurement(t._timestamp, t.value)): List[Measurement])
+          newMin = currentTruck
+        }
+        // if current value is < existing min, reset the min
+        if (currentTruck.value < newMin.value) newMin = currentTruck
       }
-      // if current value is < existing min, reset the min
-      if (currentTruck.value < newMin.value) newMin = currentTruck
     })
     newMin
   }
