@@ -33,33 +33,38 @@ object FlatMapTruckAlerts {
   private case class Truck(truck: String, _timestamp: Timestamp, value: Double)
 
   // User-defined truck state
-  private case class TruckState(trucks: List[Truck])
+  private case class TruckState(min: Measurement, trucks: List[Truck])
 
   // User-defined data type representing the update information returned by flatMapGroupsWithState
   private case class AlertRow(truck: String, alert: Alert, measurements: List[Measurement])
 
   // wrapper that contains trucks and alert rows
-  private case class AlertWrapper(trucks: List[Truck], alertRows: Iterator[AlertRow])
+  private case class AlertWrapper(min: Measurement, trucks: List[Truck], alertRows: Iterator[AlertRow])
+
+  //noinspection ConvertExpressionToSAM
+  // sort the trucks based on timestamp
+  implicit def ordered: Ordering[Timestamp] = new Ordering[Timestamp] {
+    def compare(x: Timestamp, y: Timestamp): Int = x compareTo y
+  }
 
   // Update function, takes a key, an iterator of trucks and a previous state, returns an iterator which represents the
   // rows of the output from flatMapGroupsWithState
   private def updateAlertsAcrossBatch(truck: String, newTrucks: Iterator[Truck], state: GroupState[TruckState]): Iterator[AlertRow] = {
     if (state.hasTimedOut) {
       // create final alerts
-      val alerts = createAlerts(state.get.trucks).alertRows
+      val alerts = createAlerts(state.get.min, state.get.trucks.sortBy(truck => truck._timestamp)).alertRows
       state.remove
       // return the iterator of final alert rows
       alerts
     } else {
-      // Update state
-      val updatedTrucks: List[Truck] = if (state.exists)
-        state.get.trucks ++ newTrucks.toList
-      else
-        newTrucks.toList
+      // Update truck and min state
+      val updated: List[Truck] = if (state.exists) state.get.trucks ++ newTrucks.toList else newTrucks.toList
+      val sorted: List[Truck] = updated.sortBy(truck => truck._timestamp)
+      val min: Measurement = if (state.exists) state.get.min else Measurement(sorted.head._timestamp, sorted.head.value)
       // create the updated alerts
-      val alertWrapper = createAlerts(updatedTrucks)
+      val alertWrapper = createAlerts(min, sorted)
       // update the state with the trucks
-      state.update(TruckState(alertWrapper.trucks))
+      state.update(TruckState(alertWrapper.min, alertWrapper.trucks))
       // set the timeout to be last timestamp plus 60 min, a Timeout will eventually occur when there is a trigger
       // in the query, after X ms, basically, a Timeout occurs when the grouped key has not received any new data
       // and the time set of 60 min has elapsed
@@ -70,48 +75,46 @@ object FlatMapTruckAlerts {
     }
   }
 
-  //noinspection ConvertExpressionToSAM
-  // sort the trucks based on timestamp
-  implicit def ordered: Ordering[Timestamp] = new Ordering[Timestamp] {
-    def compare(x: Timestamp, y: Timestamp): Int = x compareTo y
-  }
-
-  private def createAlerts(trucks: List[Truck]): AlertWrapper = {
+  private def createAlerts(min: Measurement, trucks: List[Truck]): AlertWrapper = {
     val truckBuffer = new ListBuffer[Truck]()
     val alertBuffer = new ListBuffer[AlertRow]()
 
-    // create the alerts and remove all values from ..
-    val sortedTrucks = trucks.sortBy(truck => truck._timestamp)
+    val first = trucks.head
+    val last = trucks.last
+    // todo: think about not operating on the entire list evertime...
 
-    // set initial min value and time
-    val initialTruck: Truck = sortedTrucks.head
-    val truckId = initialTruck.truck
-    // min measurement
-    var min = Measurement(initialTruck._timestamp, initialTruck.value)
+    // min changes over time as we go through the list of truck values
+    var newMin: Measurement = null
+    // 1) if first and last is within an hour
+    if (isTimeWithInHour(first._timestamp, last._timestamp)) {
+      newMin = calculateAlertsInHour(min, trucks, truckBuffer, alertBuffer)
+    }
 
-    sortedTrucks.foreach(truck => {
-      val currentTruck = Measurement(truck._timestamp, truck.value)
-      // first check if the min and current value time is less then an hour
-      if (Duration.between(min._timestamp.toLocalDateTime, currentTruck._timestamp.toLocalDateTime).toHours < 1) {
-
-        if (currentTruck.value - min.value > 10) {
-          // create alert and reset min
-          alertBuffer += AlertRow(truckId, Alert(min, currentTruck), List[Measurement]())
-          min = currentTruck
-        } else {
-          // add to stateful truck list
-          truckBuffer += truck
-        }
-
-        // if current value is < existing min, reset the min
-        if (currentTruck.value < min.value) min = currentTruck
-      } else {
-        println(truck)
-      }
-
-    })
-    AlertWrapper(truckBuffer.toList, alertBuffer.iterator)
+    AlertWrapper(newMin, truckBuffer.toList, alertBuffer.iterator)
   }
+
+  private def calculateAlertsInHour(min: Measurement, trucks: List[Truck], truckBuffer: ListBuffer[Truck],
+                                    alertBuffer: ListBuffer[AlertRow]): Measurement = {
+    var newMin: Measurement = min
+    trucks.foreach(t => {
+      // first, always add to stateful truck list
+      truckBuffer += t
+      // then calculate alerts if they exist
+      val currentTruck = Measurement(t._timestamp, t.value)
+      if (currentTruck.value - newMin.value > 10) {
+        // create alert and reset min
+        alertBuffer += AlertRow(t.truck, Alert(newMin, currentTruck),
+          truckBuffer.toList.map((t: Truck) => Measurement(t._timestamp, t.value)): List[Measurement])
+        newMin = currentTruck
+      }
+      // if current value is < existing min, reset the min
+      if (currentTruck.value < newMin.value) newMin = currentTruck
+    })
+    newMin
+  }
+
+  private def isTimeWithInHour(time1: Timestamp, time2: Timestamp): Boolean = Duration.between(time1.toLocalDateTime,
+    time2.toLocalDateTime).toHours < 1
 
   def main(args: Array[String]) {
     // driver configuration
