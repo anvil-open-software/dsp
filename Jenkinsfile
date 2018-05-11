@@ -4,7 +4,5 @@
 
 buildWithMaven() {
     skipSonar = true
-
-// revert when merging back to master with mvn versions:set -DnewVersion=0.1.3
     skipTests = false
 }
