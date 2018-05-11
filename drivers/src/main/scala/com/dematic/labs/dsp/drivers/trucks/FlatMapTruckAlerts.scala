@@ -83,10 +83,12 @@ object FlatMapTruckAlerts {
     val last = trucks.last
 
     // min changes over time as we go through the list of truck values
-    var newMin: Measurement = null
+    var newMin: Measurement = min
     // 1) if first and last is within an hour
     if (isTimeWithInHour(first._timestamp, last._timestamp)) {
       newMin = calculateAlertsInHour(min, trucks, truckBuffer, alertBuffer)
+    } else {
+      // remove
     }
     AlertWrapper(newMin, truckBuffer.toList, alertBuffer.iterator)
   }
