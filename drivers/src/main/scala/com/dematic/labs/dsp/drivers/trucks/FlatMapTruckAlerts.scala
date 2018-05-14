@@ -79,6 +79,7 @@ object FlatMapTruckAlerts {
     val truckBuffer = new ListBuffer[Truck]()
     val alertBuffer = new ListBuffer[AlertRow]()
 
+
     // min changes over time as we go through the list of truck values
     val newMin: Measurement = calculateAlerts(min, trucks, truckBuffer, alertBuffer)
     AlertWrapper(newMin, truckBuffer.toList, alertBuffer.iterator)
@@ -88,10 +89,10 @@ object FlatMapTruckAlerts {
                               alertBuffer: ListBuffer[AlertRow]): Measurement = {
     var newMin: Measurement = min
     trucks.foreach(t => {
+      // add to stateful truck list
+      truckBuffer += t
       val currentTruck = Measurement(t._timestamp, t.value)
       if (isTimeWithInHour(newMin._timestamp, currentTruck._timestamp)) {
-        // add to stateful truck list
-        truckBuffer += t
         // calculate alerts if they exist
         if (currentTruck.value - newMin.value > 10) {
           // create alert and reset min
@@ -102,10 +103,24 @@ object FlatMapTruckAlerts {
         // current value is < existing min, reset the min
         if (currentTruck._timestamp.after(newMin._timestamp) && currentTruck.value < newMin.value) newMin = currentTruck
       } else {
-        // reset the min and clear existing buffer and and new min
-        newMin = currentTruck
-        truckBuffer.clear()
-        truckBuffer += t
+        // start by removing the head of the buffer
+        truckBuffer.remove(0)
+        newMin = if (truckBuffer.nonEmpty) Measurement(truckBuffer.head._timestamp, truckBuffer.head.value) else currentTruck
+        // iterate buffer and check for alerts
+        truckBuffer.foreach(tb => {
+          val currentTruck = Measurement(tb._timestamp, tb.value)
+          if (isTimeWithInHour(newMin._timestamp, currentTruck._timestamp)) {
+            if (currentTruck.value - newMin.value > 10) {
+              // create alert and reset min
+              alertBuffer += AlertRow(tb.truck, Alert(newMin, currentTruck),
+                truckBuffer.toList.map((tb: Truck) => Measurement(tb._timestamp, tb.value)): List[Measurement])
+              newMin = currentTruck
+            }
+          } else {
+            truckBuffer -= tb
+            newMin = if (truckBuffer.nonEmpty) Measurement(truckBuffer.head._timestamp, truckBuffer.head.value) else currentTruck
+          }
+        })
       }
     })
     newMin
