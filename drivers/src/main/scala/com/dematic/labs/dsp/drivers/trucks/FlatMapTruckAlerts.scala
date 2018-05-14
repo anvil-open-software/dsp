@@ -79,37 +79,33 @@ object FlatMapTruckAlerts {
     val truckBuffer = new ListBuffer[Truck]()
     val alertBuffer = new ListBuffer[AlertRow]()
 
-    val first = trucks.head
-    val last = trucks.last
-
     // min changes over time as we go through the list of truck values
-    var newMin: Measurement = min
-    // 1) if first and last is within an hour
-    if (isTimeWithInHour(first._timestamp, last._timestamp)) {
-      newMin = calculateAlertsInHour(min, trucks, truckBuffer, alertBuffer)
-    } else {
-      // remove
-    }
+    val newMin: Measurement = calculateAlerts(min, trucks, truckBuffer, alertBuffer)
     AlertWrapper(newMin, truckBuffer.toList, alertBuffer.iterator)
   }
 
-  private def calculateAlertsInHour(min: Measurement, trucks: List[Truck], truckBuffer: ListBuffer[Truck],
-                                    alertBuffer: ListBuffer[AlertRow]): Measurement = {
+  private def calculateAlerts(min: Measurement, trucks: List[Truck], truckBuffer: ListBuffer[Truck],
+                              alertBuffer: ListBuffer[AlertRow]): Measurement = {
     var newMin: Measurement = min
     trucks.foreach(t => {
-      // first, always add to stateful truck list
-      truckBuffer += t
-      if (t._timestamp.after(newMin._timestamp)) {
-        // then calculate alerts if they exist
-        val currentTruck = Measurement(t._timestamp, t.value)
+      val currentTruck = Measurement(t._timestamp, t.value)
+      if (isTimeWithInHour(newMin._timestamp, currentTruck._timestamp)) {
+        // add to stateful truck list
+        truckBuffer += t
+        // calculate alerts if they exist
         if (currentTruck.value - newMin.value > 10) {
           // create alert and reset min
           alertBuffer += AlertRow(t.truck, Alert(newMin, currentTruck),
             truckBuffer.toList.map((t: Truck) => Measurement(t._timestamp, t.value)): List[Measurement])
           newMin = currentTruck
         }
-        // if current value is < existing min, reset the min
-        if (currentTruck.value < newMin.value) newMin = currentTruck
+        // current value is < existing min, reset the min
+        if (currentTruck._timestamp.after(newMin._timestamp) && currentTruck.value < newMin.value) newMin = currentTruck
+      } else {
+        // reset the min and clear existing buffer and and new min
+        newMin = currentTruck
+        truckBuffer.clear()
+        truckBuffer += t
       }
     })
     newMin
