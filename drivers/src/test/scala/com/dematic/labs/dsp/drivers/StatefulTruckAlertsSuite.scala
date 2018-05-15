@@ -76,7 +76,6 @@ class StatefulTruckAlertsSuite extends FunSuite with BeforeAndAfter {
           s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(5)}","channel":"T_motTemp_Lft","value":30.0}""",
           s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(6)}","channel":"T_motTemp_Lft","value":35.0}"""
         )
-
         new TestTruckProducer(kafkaServer.getKafkaConnect, "linde", jsonMessages)
       }
     }
