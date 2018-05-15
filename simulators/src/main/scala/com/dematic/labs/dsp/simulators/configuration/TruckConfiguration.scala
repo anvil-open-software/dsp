@@ -2,8 +2,10 @@ package com.dematic.labs.dsp.simulators.configuration
 
 import java.util
 
+import com.dematic.labs.dsp.simulators.configuration.PartitionStrategy.PartitionStrategy
 import com.dematic.labs.toolkit_bigdata.simulators.configuration.ProducerConfiguration
 import com.google.common.collect.Iterables
+
 
 object TruckConfiguration {
 
@@ -17,6 +19,7 @@ object TruckConfiguration {
     private val ANOMALIES_SEND = "producer.anomalies.send"
     private val ANOMALIES_FILTER_THRESHOLD = "producer.anomalies.filter.threshold"
     private val GAP_THRESHOLD_IN_MILLIS="producer.gap.thresholdInMilliseconds"
+    private val PRODUCER_PARTITION_STRATEGY = "producer.partition.strategy"
 
 
     val truckIdRange: util.List[Integer] = getConfig.getIntList(TRUCK_ID_RANGE)
@@ -28,6 +31,7 @@ object TruckConfiguration {
     val sendAnomalies: Boolean = getConfig.getBoolean(ANOMALIES_SEND)
     val anomaliesFilterThreshhold: Int = getConfig.getInt(ANOMALIES_FILTER_THRESHOLD)
     val gapThresholdInMillis: Long = getConfig.getLong(GAP_THRESHOLD_IN_MILLIS)
+    val partitionStrategy: PartitionStrategy = PartitionStrategy.withName(getConfig.getString(PRODUCER_PARTITION_STRATEGY))
 
     override def getThis: TruckConfiguration.Builder = {
       this
@@ -50,6 +54,7 @@ final class TruckConfiguration private[TruckConfiguration](val builder: TruckCon
   private val anomaliesSend: Boolean = builder.sendAnomalies
   private val anomaliesFilterThreshhold:Int = builder.anomaliesFilterThreshhold
   private val gapThresholdInMillis:Long = builder.gapThresholdInMillis
+  private val partitionStrategy: PartitionStrategy = builder.partitionStrategy
 
   def getTruckIdRange: util.List[Integer] = {
     truckIdRange
@@ -91,6 +96,9 @@ final class TruckConfiguration private[TruckConfiguration](val builder: TruckCon
     Iterables.getLast(predicateDateRange)
   }
 
+  def getPartitionStrategy: PartitionStrategy = {
+    partitionStrategy
+  }
   def getAnomaliesSend: Boolean = {
     anomaliesSend
   }

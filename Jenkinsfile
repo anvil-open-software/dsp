@@ -4,6 +4,5 @@
 
 buildWithMaven() {
     skipSonar = true
-
     skipTests = false
 }
