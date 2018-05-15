@@ -1,6 +1,8 @@
 package com.dematic.labs.dsp.drivers.trucks
 
 import java.sql.Timestamp
+import java.time.Duration
+import java.util.Locale
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
@@ -8,7 +10,7 @@ import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.Trigger.ProcessingTime
-import org.apache.spark.sql.streaming.{GroupState, GroupStateTimeout}
+import org.apache.spark.sql.streaming.{GroupState, GroupStateTimeout, OutputMode}
 import org.apache.spark.sql.types.DataTypes.StringType
 import org.apache.spark.sql.types.{DoubleType, StructField, StructType, TimestampType}
 
@@ -20,6 +22,118 @@ object StatefulTruckAlerts {
 
   private[drivers] def setDriverConfiguration(driverConfiguration: DriverConfiguration) {
     injectedDriverConfiguration = driverConfiguration
+  }
+
+  // Defines the measurement, alert, and alerts, really just used to define the key in the json
+  private case class Measurement(_timestamp: Timestamp, value: Double)
+
+  private case class Alert(min: Measurement, max: Measurement)
+
+  // User-defined data type representing the input events
+  private case class Truck(truck: String, _timestamp: Timestamp, value: Double)
+
+  // User-defined truck state
+  private case class TruckState(min: Truck, trucks: List[Truck])
+
+  // User-defined data type representing the update information returned by flatMapGroupsWithState
+  private case class AlertRow(truck: String, alert: Alert, measurements: List[Measurement])
+
+  // wrapper that contains trucks and alert rows
+  private case class AlertWrapper(min: Truck, trucks: List[Truck], alertRows: Iterator[AlertRow])
+
+  //noinspection ConvertExpressionToSAM
+  // sort the trucks based on timestamp
+  implicit def ordered: Ordering[Timestamp] = new Ordering[Timestamp] {
+    def compare(x: Timestamp, y: Timestamp): Int = x compareTo y
+  }
+
+  // Update function, takes a key, an iterator of trucks and a previous state, returns an iterator which represents the
+  // rows of the output from flatMapGroupsWithState
+  private def updateAlertsAcrossBatch(truck: String, newTrucks: Iterator[Truck], state: GroupState[TruckState]): Iterator[AlertRow] = {
+    if (state.hasTimedOut) {
+      // create final alerts
+      val alerts = createAlerts(state.get.min, state.get.trucks.sortBy(truck => truck._timestamp)).alertRows
+      state.remove
+      // return the iterator of final alert rows
+      alerts
+    } else {
+      // Update truck and min state
+      val updated: List[Truck] = if (state.exists) state.get.trucks ++ newTrucks.toList else newTrucks.toList
+      val sorted: List[Truck] = updated.sortBy(truck => truck._timestamp)
+      val min: Truck = if (state.exists) state.get.min else sorted.head
+      // create the updated alerts
+      val alertWrapper = createAlerts(min, sorted)
+      // update the state with the trucks
+      state.update(TruckState(alertWrapper.min, alertWrapper.trucks))
+      // set the timeout to be last timestamp plus 60 min, a Timeout will eventually occur when there is a trigger
+      // in the query, after X ms, basically, a Timeout occurs when the grouped key has not received any new data
+      // and the time set of 60 min has elapsed
+      if (alertWrapper.trucks.nonEmpty)
+        state.setTimeoutTimestamp(alertWrapper.trucks.last._timestamp.getTime + 60 * 60 * 1000)
+      // return the alerts
+      alertWrapper.alertRows
+    }
+  }
+
+  private def createAlerts(min: Truck, trucks: List[Truck]): AlertWrapper = {
+    val truckBuffer = new ListBuffer[Truck]()
+    val alertBuffer = new ListBuffer[AlertRow]()
+
+    // min changes over time as we go through the list of truck values
+    val newMin: Truck = calculateAlerts(min, trucks, truckBuffer, alertBuffer)
+    AlertWrapper(newMin, truckBuffer.toList, alertBuffer.iterator)
+  }
+
+  private def calculateAlerts(min: Truck, trucks: List[Truck], truckBuffer: ListBuffer[Truck],
+                              alertBuffer: ListBuffer[AlertRow]): Truck = {
+    var newMin: Truck = min
+    trucks.foreach(t => {
+      // add to stateful truck list
+      truckBuffer += t
+      if (isTimeWithInHour(newMin._timestamp, t._timestamp)) {
+        // calculate alerts if they exist
+        if (t.value - newMin.value > 10) {
+          // remove old trucks from the truck buffer
+          removeOldTrucks(t, truckBuffer)
+          // create alert and reset min
+          alertBuffer += AlertRow(t.truck, Alert(Measurement(newMin._timestamp, newMin.value),
+            Measurement(t._timestamp, t.value)), truckBuffer.toList.map((t: Truck) => Measurement(t._timestamp, t.value)): List[Measurement])
+          // reset the min
+          newMin = t
+        }
+        // current value is < existing min, reset the min
+        if (t._timestamp.after(newMin._timestamp) && t.value < newMin.value) newMin = t
+      } else {
+        // remove old trucks from the truck buffer
+        removeOldTrucks(t, truckBuffer)
+        // create a new min from the beginning of the list
+        newMin = if (truckBuffer.nonEmpty) truckBuffer.head else t
+        // iterate buffer and check for alerts
+        truckBuffer.foreach(tb => {
+          if (isTimeWithInHour(newMin._timestamp, tb._timestamp)) {
+            if (tb.value - newMin.value > 10) {
+              // create alert and reset min
+              alertBuffer += AlertRow(tb.truck, Alert(Measurement(newMin._timestamp, newMin.value),
+                Measurement(tb._timestamp, tb.value)), truckBuffer.toList.map((tb: Truck) => Measurement(tb._timestamp, tb.value)): List[Measurement])
+              newMin = tb
+            }
+          } else {
+            truckBuffer -= tb
+            newMin = if (truckBuffer.nonEmpty) truckBuffer.head else tb
+          }
+        })
+      }
+    })
+    newMin
+  }
+
+  private def isTimeWithInHour(time1: Timestamp, time2: Timestamp): Boolean = Duration.between(time1.toLocalDateTime,
+    time2.toLocalDateTime).toHours < 1
+
+  private def removeOldTrucks(currentTruck: Truck, truckBuffer: ListBuffer[Truck]): Unit = {
+    truckBuffer.foreach(t => {
+      if (!isTimeWithInHour(t._timestamp, currentTruck._timestamp)) truckBuffer -= t else if (currentTruck == t) return
+    })
   }
 
   def main(args: Array[String]) {
@@ -69,34 +183,15 @@ object StatefulTruckAlerts {
         where("channel == 'T_motTemp_Lft'").
         as[Truck]
 
-      // group by truck id and trigger an alert if condition is meet
       val alerts = channels.
-        withWatermark("_timestamp", "1 hours").
+        withWatermark("_timestamp", "60 minutes"). // how late the data can be before it is dropped
         groupByKey(_.truck).
-        mapGroupsWithState[TruckState, Alerts](GroupStateTimeout.EventTimeTimeout()) {
-
-        case (truck: String, trucks: Iterator[Truck], state: GroupState[TruckState]) =>
-          // If timed out, then remove session and send final update
-          if (state.hasTimedOut) {
-            val finalAlertUpdate = Alerts(truck, state.get.count, state.get.alerts, state.get.measurements)
-            state.remove()
-            finalAlertUpdate
-          } else {
-            // Update state
-            val truckUpdate = if (state.exists) {
-              val oldSession = state.get
-              TruckState(oldSession.trucks ++ trucks.toList, config.getDriverAlertThreshold)
-            } else {
-              TruckState(trucks.toList, config.getDriverAlertThreshold)
-            }
-            state.update(truckUpdate)
-            Alerts(truck, state.get.count, state.get.alerts, state.get.measurements)
-          }
-      }.withColumn("processing_time", current_timestamp()).where("count > 0")
+        flatMapGroupsWithState[TruckState, AlertRow](outputMode(config.getSparkOutputMode),
+        GroupStateTimeout.EventTimeTimeout)(updateAlertsAcrossBatch)
 
       // Start running the query that prints the session updates to the console
       alerts
-        .selectExpr("to_json(struct(processing_time, truck, alerts, measurements)) AS value")
+        .selectExpr("to_json(struct(truck, alert, measurements)) AS value")
         .writeStream
         .format("kafka")
         .queryName("statefulTruckAlerts")
@@ -111,56 +206,18 @@ object StatefulTruckAlerts {
     } finally
       sparkSession.close
   }
-}
 
-// Defines the measurement, alert, and alerts, really just used to define the key in the json
-case class Measurement(_timestamp: Timestamp, value: Double)
-
-case class Alert(min: Measurement, max: Measurement)
-
-// User-defined data type representing the input events
-case class Truck(truck: String, _timestamp: Timestamp, value: Double)
-
-// User-defined data type for storing a truck information as state in mapGroupsWithState
-case class TruckState(trucks: List[Truck], threshold: Int) {
-  private val alertBuffer = new ListBuffer[Alert]()
-  private val measurementBuffer = new ListBuffer[Measurement]()
-
-  //noinspection ConvertExpressionToSAM
-  // sort the trucks based on timestamp
-  implicit def ordered: Ordering[Timestamp] = new Ordering[Timestamp] {
-    def compare(x: Timestamp, y: Timestamp): Int = x compareTo y
-  }
-
-  val sortedTrucks: List[Truck] = trucks sortBy (truck => truck._timestamp)
-
-  // set initial min value and time
-  val initialTruck: Truck = sortedTrucks.head
-  private var min = Measurement(initialTruck._timestamp, initialTruck.value)
-
-  sortedTrucks.foreach(truck => {
-    // check for alerts and collect alert points
-    val currentTruck = Measurement(truck._timestamp, truck.value)
-    if (currentTruck.value - min.value > threshold) {
-      alertBuffer += Alert(min, currentTruck)
-      // reset the min to the current truck that caused the alert
-      min = currentTruck
+  private def outputMode(outputMode: String): OutputMode = {
+    outputMode.toLowerCase(Locale.ROOT) match {
+      case "append" =>
+        OutputMode.Append
+      case "complete" =>
+        OutputMode.Complete
+      case "update" =>
+        OutputMode.Update
+      case _ =>
+        throw new IllegalArgumentException(s"Unknown output mode $outputMode. " +
+          "Accepted output modes are 'append', 'complete', 'update'")
     }
-    // if current value is < existing min, reset the min
-    if (currentTruck.value < min.value) min = currentTruck
-    // collect all the values
-    measurementBuffer += Measurement(truck._timestamp, truck.value)
-  })
-
-  def count: Long = alerts.size
-
-  def alerts: List[Alert] = alertBuffer.toList
-
-  def measurements: List[Measurement] = measurementBuffer.toList
+  }
 }
-
-// User-defined data type representing the update information returned by mapGroupsWithState
-case class Alerts(truck: String,
-                  count: Long,
-                  alerts: List[Alert],
-                  measurements: List[Measurement])
