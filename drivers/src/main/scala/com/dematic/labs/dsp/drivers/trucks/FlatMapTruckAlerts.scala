@@ -33,13 +33,13 @@ object FlatMapTruckAlerts {
   private case class Truck(truck: String, _timestamp: Timestamp, value: Double)
 
   // User-defined truck state
-  private case class TruckState(min: Measurement, trucks: List[Truck])
+  private case class TruckState(min: Truck, trucks: List[Truck])
 
   // User-defined data type representing the update information returned by flatMapGroupsWithState
   private case class AlertRow(truck: String, alert: Alert, measurements: List[Measurement])
 
   // wrapper that contains trucks and alert rows
-  private case class AlertWrapper(min: Measurement, trucks: List[Truck], alertRows: Iterator[AlertRow])
+  private case class AlertWrapper(min: Truck, trucks: List[Truck], alertRows: Iterator[AlertRow])
 
   //noinspection ConvertExpressionToSAM
   // sort the trucks based on timestamp
@@ -60,7 +60,7 @@ object FlatMapTruckAlerts {
       // Update truck and min state
       val updated: List[Truck] = if (state.exists) state.get.trucks ++ newTrucks.toList else newTrucks.toList
       val sorted: List[Truck] = updated.sortBy(truck => truck._timestamp)
-      val min: Measurement = if (state.exists) state.get.min else Measurement(sorted.head._timestamp, sorted.head.value)
+      val min: Truck = if (state.exists) state.get.min else sorted.head
       // create the updated alerts
       val alertWrapper = createAlerts(min, sorted)
       // update the state with the trucks
@@ -75,50 +75,51 @@ object FlatMapTruckAlerts {
     }
   }
 
-  private def createAlerts(min: Measurement, trucks: List[Truck]): AlertWrapper = {
+  private def createAlerts(min: Truck, trucks: List[Truck]): AlertWrapper = {
     val truckBuffer = new ListBuffer[Truck]()
     val alertBuffer = new ListBuffer[AlertRow]()
 
-
     // min changes over time as we go through the list of truck values
-    val newMin: Measurement = calculateAlerts(min, trucks, truckBuffer, alertBuffer)
+    val newMin: Truck = calculateAlerts(min, trucks, truckBuffer, alertBuffer)
     AlertWrapper(newMin, truckBuffer.toList, alertBuffer.iterator)
   }
 
-  private def calculateAlerts(min: Measurement, trucks: List[Truck], truckBuffer: ListBuffer[Truck],
-                              alertBuffer: ListBuffer[AlertRow]): Measurement = {
-    var newMin: Measurement = min
+  private def calculateAlerts(min: Truck, trucks: List[Truck], truckBuffer: ListBuffer[Truck],
+                              alertBuffer: ListBuffer[AlertRow]): Truck = {
+    var newMin: Truck = min
     trucks.foreach(t => {
       // add to stateful truck list
       truckBuffer += t
-      val currentTruck = Measurement(t._timestamp, t.value)
-      if (isTimeWithInHour(newMin._timestamp, currentTruck._timestamp)) {
+      if (isTimeWithInHour(newMin._timestamp, t._timestamp)) {
         // calculate alerts if they exist
-        if (currentTruck.value - newMin.value > 10) {
+        if (t.value - newMin.value > 10) {
+          // remove old trucks from the truck buffer
+          removeOldTrucks(t, truckBuffer)
           // create alert and reset min
-          alertBuffer += AlertRow(t.truck, Alert(newMin, currentTruck),
-            truckBuffer.toList.map((t: Truck) => Measurement(t._timestamp, t.value)): List[Measurement])
-          newMin = currentTruck
+          alertBuffer += AlertRow(t.truck, Alert(Measurement(newMin._timestamp, newMin.value),
+            Measurement(t._timestamp, t.value)), truckBuffer.toList.map((t: Truck) => Measurement(t._timestamp, t.value)): List[Measurement])
+          // reset the min
+          newMin = t
         }
         // current value is < existing min, reset the min
-        if (currentTruck._timestamp.after(newMin._timestamp) && currentTruck.value < newMin.value) newMin = currentTruck
+        if (t._timestamp.after(newMin._timestamp) && t.value < newMin.value) newMin = t
       } else {
-        // start by removing the head of the buffer
-        truckBuffer.remove(0)
-        newMin = if (truckBuffer.nonEmpty) Measurement(truckBuffer.head._timestamp, truckBuffer.head.value) else currentTruck
+        // remove old trucks from the truck buffer
+        removeOldTrucks(t, truckBuffer)
+        // create a new min from the beginning of the list
+        newMin = if (truckBuffer.nonEmpty) truckBuffer.head else t
         // iterate buffer and check for alerts
         truckBuffer.foreach(tb => {
-          val currentTruck = Measurement(tb._timestamp, tb.value)
-          if (isTimeWithInHour(newMin._timestamp, currentTruck._timestamp)) {
-            if (currentTruck.value - newMin.value > 10) {
+          if (isTimeWithInHour(newMin._timestamp, tb._timestamp)) {
+            if (tb.value - newMin.value > 10) {
               // create alert and reset min
-              alertBuffer += AlertRow(tb.truck, Alert(newMin, currentTruck),
-                truckBuffer.toList.map((tb: Truck) => Measurement(tb._timestamp, tb.value)): List[Measurement])
-              newMin = currentTruck
+              alertBuffer += AlertRow(tb.truck, Alert(Measurement(newMin._timestamp, newMin.value),
+                Measurement(tb._timestamp, tb.value)), truckBuffer.toList.map((tb: Truck) => Measurement(tb._timestamp, tb.value)): List[Measurement])
+              newMin = tb
             }
           } else {
             truckBuffer -= tb
-            newMin = if (truckBuffer.nonEmpty) Measurement(truckBuffer.head._timestamp, truckBuffer.head.value) else currentTruck
+            newMin = if (truckBuffer.nonEmpty) truckBuffer.head else tb
           }
         })
       }
@@ -128,6 +129,12 @@ object FlatMapTruckAlerts {
 
   private def isTimeWithInHour(time1: Timestamp, time2: Timestamp): Boolean = Duration.between(time1.toLocalDateTime,
     time2.toLocalDateTime).toHours < 1
+
+  private def removeOldTrucks(currentTruck: Truck, truckBuffer: ListBuffer[Truck]): Unit = {
+    truckBuffer.foreach(t => {
+      if (!isTimeWithInHour(t._timestamp, currentTruck._timestamp)) truckBuffer -= t else if (currentTruck == t) return
+    })
+  }
 
   def main(args: Array[String]) {
     // driver configuration
