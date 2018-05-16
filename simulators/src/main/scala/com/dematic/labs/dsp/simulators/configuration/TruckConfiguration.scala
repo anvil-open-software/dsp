@@ -16,8 +16,12 @@ object TruckConfiguration {
     private val USERNAME = "producer.influxdb.username"
     private val PASSWORD = "producer.influxdb.password"
     private val PREDICATE_DATE_RANGE = "producer.influxdb.query.predicate"
+
+    private val TRUCKS_PER_THREAD = "producer.trucksPerThread"
+
     private val ANOMALIES_SEND = "producer.anomalies.send"
     private val ANOMALIES_FILTER_THRESHOLD = "producer.anomalies.filter.threshold"
+
     private val GAP_THRESHOLD_IN_MILLIS="producer.gap.thresholdInMilliseconds"
     private val PRODUCER_PARTITION_STRATEGY = "producer.partition.strategy"
 
@@ -28,6 +32,7 @@ object TruckConfiguration {
     val username: String = getConfig.getString(USERNAME)
     val password: String = getConfig.getString(PASSWORD)
     val predicateDateRange: util.List[String] = getConfig.getStringList(PREDICATE_DATE_RANGE)
+    val trucksPerThread: Int =  getConfig.getInt(TRUCKS_PER_THREAD)
     val sendAnomalies: Boolean = getConfig.getBoolean(ANOMALIES_SEND)
     val anomaliesFilterThreshhold: Int = getConfig.getInt(ANOMALIES_FILTER_THRESHOLD)
     val gapThresholdInMillis: Long = getConfig.getLong(GAP_THRESHOLD_IN_MILLIS)
@@ -51,10 +56,12 @@ final class TruckConfiguration private[TruckConfiguration](val builder: TruckCon
   private val username: String = builder.username
   private val password: String = builder.password
   private val predicateDateRange: util.List[String] = builder.predicateDateRange
+  private val trucksPerThread: Int = builder.trucksPerThread
   private val anomaliesSend: Boolean = builder.sendAnomalies
   private val anomaliesFilterThreshhold:Int = builder.anomaliesFilterThreshhold
   private val gapThresholdInMillis:Long = builder.gapThresholdInMillis
   private val partitionStrategy: PartitionStrategy = builder.partitionStrategy
+
 
   def getTruckIdRange: util.List[Integer] = {
     truckIdRange
@@ -94,6 +101,10 @@ final class TruckConfiguration private[TruckConfiguration](val builder: TruckCon
 
   def getPredicateDateRangeHigh: String = {
     Iterables.getLast(predicateDateRange)
+  }
+
+  def getTrucksPerThread: Int = {
+    trucksPerThread
   }
 
   def getPartitionStrategy: PartitionStrategy = {
