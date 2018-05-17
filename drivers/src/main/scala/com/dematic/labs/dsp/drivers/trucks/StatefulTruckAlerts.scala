@@ -27,8 +27,6 @@ object StatefulTruckAlerts {
   // Defines the measurement, alert, and alerts, really just used to define the key in the json
   private case class Measurement(_timestamp: Timestamp, value: Double)
 
-  private case class Alert(min: Measurement, max: Measurement)
-
   // User-defined data type representing the input events
   private case class Truck(truck: String, _timestamp: Timestamp, value: Double)
 
@@ -36,7 +34,7 @@ object StatefulTruckAlerts {
   private case class TruckState(min: Truck, trucks: List[Truck])
 
   // User-defined data type representing the update information returned by flatMapGroupsWithState
-  private case class AlertRow(truck: String, alert: Alert, measurements: List[Measurement])
+  private case class AlertRow(truck: String, min: Measurement, max: Measurement, measurements: List[Measurement])
 
   // wrapper that contains trucks and alert rows
   private case class AlertWrapper(min: Truck, trucks: List[Truck], alertRows: Iterator[AlertRow])
@@ -92,12 +90,12 @@ object StatefulTruckAlerts {
       truckBuffer += t
       if (isTimeWithInHour(newMin._timestamp, t._timestamp)) {
         // calculate alerts if they exist
-        if (t.value - newMin.value > 10) {
+        if (t.value - newMin.value > 10 && t._timestamp.after(newMin._timestamp)) {
           // remove old trucks from the truck buffer
           removeOldTrucks(t, truckBuffer)
           // create alert and reset min
-          alertBuffer += AlertRow(t.truck, Alert(Measurement(newMin._timestamp, newMin.value),
-            Measurement(t._timestamp, t.value)), truckBuffer.toList.map((t: Truck) => Measurement(t._timestamp, t.value)): List[Measurement])
+          alertBuffer += AlertRow(t.truck, Measurement(newMin._timestamp, newMin.value), Measurement(t._timestamp, t.value),
+            truckBuffer.toList.map((t: Truck) => Measurement(t._timestamp, t.value)): List[Measurement])
           // reset the min
           newMin = t
         }
@@ -113,8 +111,8 @@ object StatefulTruckAlerts {
           if (isTimeWithInHour(newMin._timestamp, tb._timestamp)) {
             if (tb.value - newMin.value > 10) {
               // create alert and reset min
-              alertBuffer += AlertRow(tb.truck, Alert(Measurement(newMin._timestamp, newMin.value),
-                Measurement(tb._timestamp, tb.value)), truckBuffer.toList.map((tb: Truck) => Measurement(tb._timestamp, tb.value)): List[Measurement])
+              alertBuffer += AlertRow(tb.truck, Measurement(newMin._timestamp, newMin.value), Measurement(tb._timestamp, tb.value),
+                truckBuffer.toList.map((tb: Truck) => Measurement(tb._timestamp, tb.value)): List[Measurement])
               newMin = tb
             }
           } else {
@@ -184,14 +182,14 @@ object StatefulTruckAlerts {
         as[Truck]
 
       val alerts = channels.
-        withWatermark("_timestamp", "60 minutes"). // how late the data can be before it is dropped
+        withWatermark("_timestamp", "1 minutes"). // how late the data can be before it is dropped
         groupByKey(_.truck).
         flatMapGroupsWithState[TruckState, AlertRow](outputMode(config.getSparkOutputMode),
         GroupStateTimeout.EventTimeTimeout)(updateAlertsAcrossBatch)
 
       // Start running the query that prints the session updates to the console
       alerts
-        .selectExpr("to_json(struct(truck, alert, measurements)) AS value")
+        .selectExpr("to_json(struct(truck, min, max, measurements)) AS value")
         .writeStream
         .format("kafka")
         .queryName("statefulTruckAlerts")
