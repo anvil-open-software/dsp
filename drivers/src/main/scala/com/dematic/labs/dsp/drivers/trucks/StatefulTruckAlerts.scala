@@ -25,7 +25,7 @@ object StatefulTruckAlerts {
   }
 
   // Defines the measurement, alert, and alerts, really just used to define the key in the json
-  private case class Measurement(_timestamp: Timestamp, value: Double)
+  private case class Measurement(timestamp: Timestamp, value: Double)
 
   // User-defined data type representing the input events
   private case class Truck(truck: String, _timestamp: Timestamp, value: Double)
