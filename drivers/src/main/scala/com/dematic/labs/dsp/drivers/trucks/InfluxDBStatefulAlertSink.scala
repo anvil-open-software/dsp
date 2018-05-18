@@ -33,26 +33,26 @@ class InfluxDBStatefulAlertSink(config: DriverConfiguration) extends ForeachWrit
     val minTime = minAlert.getAs[Timestamp]("_timestamp")
     val maxTime =  maxAlert.getAs[Timestamp]("_timestamp")
 
-    points.point(getPointBuilder("alert_mode","max_alert",maxTime)
+    points.point(getPointBuilder("icd_stateful_alert", "alert_mode","max_alert",maxTime)
                   .addField("value", maxTemp).build())
 
-    points.point(getPointBuilder("alert_mode","min_alert",minTime)
+    points.point(getPointBuilder("icd_stateful_alert", "alert_mode","min_alert",minTime)
       .addField("value", minTemp).build())
 
     // difference (easier to do here for now instead of influx)
-    points.point(getPointBuilder("alert_mode","diff_temp",maxTime)
+    points.point(getPointBuilder("icd_stateful_alert", "alert_mode","diff_temp",maxTime)
       .addField("value", maxTemp-minTemp).build())
 
     // time diff in unix milliseconds
-    points.point(getPointBuilder("alert_mode","diff_time",maxTime)
+    points.point(getPointBuilder("icd_stateful_alert_time", "time_mode","rise_time",maxTime)
       .addField("value", maxTime.getTime-minTime.getTime).build())
 
     InfluxDBConnector.getInfluxDB.write(points)
 
   }
 
-  def getPointBuilder( tag:String, metrictag:String, metricTime:Timestamp): Point.Builder = {
-    Point.measurement("icd_stateful_alert")
+  def getPointBuilder( measurement:String, tag:String, metrictag:String, metricTime:Timestamp): Point.Builder = {
+    Point.measurement(measurement)
         .tag(tag, metrictag).time(metricTime.getTime, TimeUnit.MILLISECONDS)
 
   }
