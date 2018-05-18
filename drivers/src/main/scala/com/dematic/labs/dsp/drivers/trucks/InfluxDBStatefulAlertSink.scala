@@ -7,7 +7,6 @@ import com.dematic.labs.analytics.monitor.spark.MonitorConsts
 import com.dematic.labs.dsp.drivers.configuration.DriverConfiguration
 import com.dematic.labs.dsp.tsdb.influxdb.{InfluxDBConnector, InfluxDBConsts}
 import org.apache.spark.sql.{ForeachWriter, Row}
-import org.influxdb.InfluxDB
 import org.influxdb.dto.{BatchPoints, Point}
 
 /**
@@ -31,23 +30,29 @@ class InfluxDBStatefulAlertSink(config: DriverConfiguration) extends ForeachWrit
     val minAlert = row.getAs[Row]("min")
     val maxTemp = maxAlert.getAs[Double]("value")
     val minTemp =  minAlert.getAs[Double]("value")
+    val minTime = minAlert.getAs[Timestamp]("_timestamp")
+    val maxTime =  maxAlert.getAs[Timestamp]("_timestamp")
 
-    points.point(getPointBuilder("max_alert",maxAlert.getAs[Timestamp]("_timestamp"))
+    points.point(getPointBuilder("alert_mode","max_alert",maxTime)
                   .addField("value", maxTemp).build())
 
-    points.point(getPointBuilder("min_alert",minAlert.getAs[Timestamp]("_timestamp"))
+    points.point(getPointBuilder("alert_mode","min_alert",minTime)
       .addField("value", minTemp).build())
 
     // difference (easier to do here for now instead of influx)
-    points.point(getPointBuilder("diff",maxAlert.getAs[Timestamp]("_timestamp"))
+    points.point(getPointBuilder("diff_mode","diff_temp",maxTime)
       .addField("value", maxTemp-minTemp).build())
+
+    // time diff in unix milliseconds
+    points.point(getPointBuilder("diff_mode","diff_time",maxTime)
+      .addField("value", maxTime.getTime-minTime.getTime).build())
 
     InfluxDBConnector.getInfluxDB.write(points)
 
   }
-  def getPointBuilder( metrictag:String, metricTime:Timestamp): Point.Builder = {
+  def getPointBuilder( tag:String, metrictag:String, metricTime:Timestamp): Point.Builder = {
     Point.measurement("icd_stateful_alert")
-        .tag("alert_mode", metrictag)
+        .tag(tag, metrictag)
       .time(metricTime.getTime, TimeUnit.MILLISECONDS)
 
   }
