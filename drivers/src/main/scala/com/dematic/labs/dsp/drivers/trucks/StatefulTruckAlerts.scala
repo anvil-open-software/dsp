@@ -17,7 +17,7 @@ import org.apache.spark.sql.types.{DoubleType, StructField, StructType, Timestam
 import scala.collection.mutable.ListBuffer
 
 object StatefulTruckAlerts {
-  // alert threshold
+  // alert threshold, default to 10
   private val THRESHOLD:Int = System.getProperty("driver.alert.threshold", "10").toInt
   // should only be  used with testing
   private var injectedDriverConfiguration: DriverConfiguration = _
