@@ -9,6 +9,8 @@ import com.dematic.labs.dsp.tsdb.influxdb.{InfluxDBConnector, InfluxDBConsts}
 import org.apache.spark.sql.{ForeachWriter, Row}
 import org.influxdb.dto.{BatchPoints, Point}
 
+import scala.collection.mutable
+
 /**
   * Converts truck alert json into influxdb request.
   * NOT a generic sink since the JSON format depends on truck message.
@@ -49,7 +51,7 @@ class InfluxDBStatefulAlertSink(config: DriverConfiguration) extends ForeachWrit
     InfluxDBConnector.getInfluxDB.write(points)
 
     // array
-    val measurements = row.getAs[Array[Row]]("measurements")
+    val measurements = row.getAs[mutable.WrappedArray[Row]]("measurements")
     measurements.foreach(row => {
       points.point(getPointBuilder("icd_recorded_temp", "temp","T_motTemp_Lft",
         row.getAs[Timestamp]("timestamp"))
