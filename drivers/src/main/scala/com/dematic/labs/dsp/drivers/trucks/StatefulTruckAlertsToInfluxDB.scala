@@ -8,10 +8,10 @@ import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.Trigger._
-import org.apache.spark.sql.types._
+import org.apache.spark.sql.types.{StructType, _}
 
 /**
-  * Simple data pusher, puts all truck topic alerts from kakfa to influxdb.
+  * Pushes truck topic alerts from kakfa to influxdb. Currently handles min/max of new json format
   *
   * Any changes to alert topic schema may potentially require change here.
   *
@@ -56,22 +56,22 @@ object StatefulTruckAlertsToInfluxDB {
         .option("maxOffsetsPerTrigger", config.getKafkaMaxOffsetsPerTrigger)
         .load
 
-      // define the alert json schema which has been flattened out below
-
-
+      // define the alert json schema
+      val measurements: StructType = new StructType().add("_timestamp", TimestampType)
+        .add("value", DoubleType)
       val schema: StructType = new StructType()
-        .add("truck",StringType)
+        .add("truck", StringType)
         .add("min", new StructType().add("_timestamp", TimestampType).add("value", DoubleType))
         .add("max", new StructType().add("_timestamp", TimestampType).add("value", DoubleType))
-
+        .add("measurements",new ArrayType(measurements,false))
       import sparkSession.implicits._
 
-
-      // use kafka write date for now instead of digging up the max of the "values" subtable
-      val alerts = kafka.selectExpr("cast (value as string) as json", "CAST(timestamp AS TIMESTAMP)").as[(String, Timestamp)].
+      //  kafka write date from previous driver, kept for performance debugging
+      val alerts = kafka.selectExpr("cast (value as string) as json", "CAST(timestamp AS TIMESTAMP)")
+        .as[(String, Timestamp)].
         select(from_json($"json", schema) as "alerts", $"timestamp").
-        select("alerts.*","timestamp")
-      val outputAlerts= alerts.select("truck","timestamp","min","max")
+        select("alerts.*", "timestamp")
+      val outputAlerts = alerts.select("truck", "timestamp", "min", "max","measurements")
       lazy val influxDBSink = new InfluxDBStatefulAlertSink(config)
 
       outputAlerts.writeStream
