@@ -16,7 +16,7 @@ import org.apache.spark.sql.types._
   * Any changes to alert topic schema may potentially require change here.
   *
   */
-object TruckStatefulAlertsToInfluxDB {
+object StatefulTruckAlertsToInfluxDB {
   // should only be  used with testing
   private var injectedDriverConfiguration: DriverConfiguration = _
 
