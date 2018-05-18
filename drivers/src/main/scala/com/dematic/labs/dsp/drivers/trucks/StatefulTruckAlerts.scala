@@ -92,7 +92,7 @@ object StatefulTruckAlerts {
       truckBuffer += t
       if (isTimeWithInHour(newMin._timestamp, t._timestamp)) {
         // calculate alerts if they exist
-        if (t.value - newMin.value > 10 && t._timestamp.after(newMin._timestamp)) {
+        if (t.value - newMin.value > THRESHOLD && t._timestamp.after(newMin._timestamp)) {
           // remove old trucks from the truck buffer
           removeOldTrucks(t, truckBuffer)
           // create alert and reset min
