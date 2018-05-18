@@ -57,12 +57,12 @@ object StatefulTruckAlertsToInfluxDB {
         .load
 
       // define the alert json schema
-      val measurements: StructType = new StructType().add("_timestamp", TimestampType)
+      val measurements: StructType = new StructType().add("timestamp", TimestampType)
         .add("value", DoubleType)
       val schema: StructType = new StructType()
         .add("truck", StringType)
-        .add("min", new StructType().add("_timestamp", TimestampType).add("value", DoubleType))
-        .add("max", new StructType().add("_timestamp", TimestampType).add("value", DoubleType))
+        .add("min", new StructType().add("timestamp", TimestampType).add("value", DoubleType))
+        .add("max", new StructType().add("timestamp", TimestampType).add("value", DoubleType))
         .add("measurements",new ArrayType(measurements,false))
       import sparkSession.implicits._
 

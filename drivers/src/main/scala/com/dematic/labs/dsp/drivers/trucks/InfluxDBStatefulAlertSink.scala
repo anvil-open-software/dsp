@@ -30,8 +30,8 @@ class InfluxDBStatefulAlertSink(config: DriverConfiguration) extends ForeachWrit
     val minAlert = row.getAs[Row]("min")
     val maxTemp = maxAlert.getAs[Double]("value")
     val minTemp =  minAlert.getAs[Double]("value")
-    val minTime = minAlert.getAs[Timestamp]("_timestamp")
-    val maxTime =  maxAlert.getAs[Timestamp]("_timestamp")
+    val minTime = minAlert.getAs[Timestamp]("timestamp")
+    val maxTime =  maxAlert.getAs[Timestamp]("timestamp")
 
     points.point(getPointBuilder("icd_stateful_alert", "alert_mode","max_alert",maxTime)
                   .addField("value", maxTemp).build())
@@ -52,7 +52,7 @@ class InfluxDBStatefulAlertSink(config: DriverConfiguration) extends ForeachWrit
     val measurements = row.getAs[Array[Row]]("measurements")
     measurements.foreach(row => {
       points.point(getPointBuilder("icd_recorded_temp", "temp","T_motTemp_Lft",
-        row.getAs[Timestamp]("_timestamp"))
+        row.getAs[Timestamp]("timestamp"))
         .addField("value", row.getAs[Double]("value")).build())
     })
 
