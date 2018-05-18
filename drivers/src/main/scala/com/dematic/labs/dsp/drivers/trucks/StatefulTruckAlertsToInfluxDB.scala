@@ -71,7 +71,7 @@ object StatefulTruckAlertsToInfluxDB {
       val alerts = kafka.selectExpr("cast (value as string) as json", "CAST(timestamp AS TIMESTAMP)").as[(String, Timestamp)].
         select(from_json($"json", schema) as "alerts", $"timestamp").
         select("alerts.*","timestamp")
-      val outputAlerts= alerts.select("truck","timestamp","min","max","count()")
+      val outputAlerts= alerts.select("truck","timestamp","min","max")
       lazy val influxDBSink = new InfluxDBStatefulAlertSink(config)
 
       outputAlerts.writeStream
