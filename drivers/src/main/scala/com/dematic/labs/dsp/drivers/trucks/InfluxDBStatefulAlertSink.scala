@@ -40,20 +40,20 @@ class InfluxDBStatefulAlertSink(config: DriverConfiguration) extends ForeachWrit
       .addField("value", minTemp).build())
 
     // difference (easier to do here for now instead of influx)
-    points.point(getPointBuilder("diff_mode","diff_temp",maxTime)
+    points.point(getPointBuilder("alert_mode","diff_temp",maxTime)
       .addField("value", maxTemp-minTemp).build())
 
     // time diff in unix milliseconds
-    points.point(getPointBuilder("diff_mode","diff_time",maxTime)
+    points.point(getPointBuilder("alert_mode","diff_time",maxTime)
       .addField("value", maxTime.getTime-minTime.getTime).build())
 
     InfluxDBConnector.getInfluxDB.write(points)
 
   }
+
   def getPointBuilder( tag:String, metrictag:String, metricTime:Timestamp): Point.Builder = {
     Point.measurement("icd_stateful_alert")
-        .tag(tag, metrictag)
-      .time(metricTime.getTime, TimeUnit.MILLISECONDS)
+        .tag(tag, metrictag).time(metricTime.getTime, TimeUnit.MILLISECONDS)
 
   }
   override def open(partitionId: Long, version: Long) = true
