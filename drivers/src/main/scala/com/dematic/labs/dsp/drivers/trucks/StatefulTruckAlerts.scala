@@ -17,6 +17,8 @@ import org.apache.spark.sql.types.{DoubleType, StructField, StructType, Timestam
 import scala.collection.mutable.ListBuffer
 
 object StatefulTruckAlerts {
+  // alert threshold, default to 10
+  private val THRESHOLD:Int = System.getProperty("driver.alert.threshold", "10").toInt
   // should only be  used with testing
   private var injectedDriverConfiguration: DriverConfiguration = _
 
@@ -25,7 +27,7 @@ object StatefulTruckAlerts {
   }
 
   // Defines the measurement, alert, and alerts, really just used to define the key in the json
-  private case class Measurement(_timestamp: Timestamp, value: Double)
+  private case class Measurement(timestamp: Timestamp, value: Double)
 
   // User-defined data type representing the input events
   private case class Truck(truck: String, _timestamp: Timestamp, value: Double)
@@ -90,7 +92,7 @@ object StatefulTruckAlerts {
       truckBuffer += t
       if (isTimeWithInHour(newMin._timestamp, t._timestamp)) {
         // calculate alerts if they exist
-        if (t.value - newMin.value > 10 && t._timestamp.after(newMin._timestamp)) {
+        if (t.value - newMin.value > THRESHOLD && t._timestamp.after(newMin._timestamp)) {
           // remove old trucks from the truck buffer
           removeOldTrucks(t, truckBuffer)
           // create alert and reset min
@@ -109,7 +111,7 @@ object StatefulTruckAlerts {
         // iterate buffer and check for alerts
         truckBuffer.foreach(tb => {
           if (isTimeWithInHour(newMin._timestamp, tb._timestamp)) {
-            if (tb.value - newMin.value > 10) {
+            if (tb.value - newMin.value > THRESHOLD) {
               // create alert and reset min
               alertBuffer += AlertRow(tb.truck, Measurement(newMin._timestamp, newMin.value), Measurement(tb._timestamp, tb.value),
                 truckBuffer.toList.map((tb: Truck) => Measurement(tb._timestamp, tb.value)): List[Measurement])
