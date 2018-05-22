@@ -103,6 +103,7 @@ object Trucks extends App {
     val countdownTimer: CountdownTimer = new CountdownTimer
     countdownTimer.countDown(config.getDurationInMinutes.toInt)
 
+    val partitionCount = producer.partitionsFor(config.getTopics).size()
     // create a list of task that will be dispatched on its own thread
     var tasks: List[Task[Unit]] = List()
     for (truckIdx <- lowTruckRange to highTruckRange) {
@@ -111,7 +112,8 @@ object Trucks extends App {
         if (trucksPerThread==1)  {
           dispatchTruck(s"${config.getId}$truckIdx", countdownTimer)
         } else {
-          dispatchTrucks(s"${config.getId}$truckIdx", trucksPerThread, countdownTimer)
+          val partitionId=Math.floorMod(truckIdx, partitionCount)
+          dispatchTrucks(partitionId, s"${config.getId}$truckIdx", trucksPerThread, countdownTimer)
         }
       }
     }
@@ -206,7 +208,7 @@ object Trucks extends App {
     * @param trucksPerThread
     * @param countdownTimer
     */
-  def dispatchTrucks(baseTruckId: String, trucksPerThread: Int, countdownTimer: CountdownTimer) {
+  def dispatchTrucks(partitionIdx:Int,baseTruckId: String, trucksPerThread: Int, countdownTimer: CountdownTimer) {
 
     var index = new Array[Int](trucksPerThread)
     for (i <- 0 to trucksPerThread -1) {
@@ -268,7 +270,7 @@ object Trucks extends App {
           s"""{"truck":"$truckId","_timestamp":"$isoDateTime","channel":"T_motTemp_Lft","value":${data(i).get(1)}}"""
           // acquire permit to send, limits to 1 msg a second
           config.getPartitionStrategy match {
-            case PartitionStrategy.DEFAULT_KEYED_PARTITION => producer.send(new ProducerRecord[String, AnyRef](config.getTopics, truckId, json.getBytes(Charset.defaultCharset())))
+            case PartitionStrategy.DEFAULT_KEYED_PARTITION => producer.send(new ProducerRecord[String, AnyRef](config.getTopics, partitionIdx, truckId, json.getBytes(Charset.defaultCharset())))
 
             // random per transaction which can cause shuffles if order is needed
             case _ => producer.send(new ProducerRecord[String, AnyRef](config.getTopics, truckId, json.getBytes(Charset.defaultCharset())))
