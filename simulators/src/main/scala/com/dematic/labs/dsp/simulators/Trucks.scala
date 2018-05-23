@@ -86,7 +86,7 @@ object Trucks extends App {
     val lowTruckRange: Int = config.getTruckIdRangeLow
     val highTruckRange: Int = config.getTruckIdRangeHigh
     val numOfThreads = highTruckRange - lowTruckRange
-    val trucksPerThread =config.getTrucksPerThread
+    val trucksPerThread = config.getTrucksPerThread
     logger.info("Requested truck range " + lowTruckRange + " to " + highTruckRange
       + " with availableProcessors=" + Runtime.getRuntime.availableProcessors)
 
@@ -109,10 +109,10 @@ object Trucks extends App {
     for (truckIdx <- lowTruckRange to highTruckRange) {
       tasks = tasks :+ Task {
         // try
-        if (trucksPerThread==1)  {
+        if (trucksPerThread == 1) {
           dispatchTruck(s"${config.getId}$truckIdx", countdownTimer)
         } else {
-          val partitionId=Math.floorMod(truckIdx, partitionCount)
+          val partitionId = Math.floorMod(truckIdx, partitionCount)
           dispatchTrucks(partitionId, s"${config.getId}$truckIdx", trucksPerThread, countdownTimer)
         }
       }
@@ -145,7 +145,7 @@ object Trucks extends App {
     var index = randomIndex()
     // will limit sends to 1 per second
     val rateLimiter = RateLimiter.create(1, 0, MINUTES) // make configurable if needed
-    var previousValue : Double = 0.0
+    var previousValue: Double = 0.0
     // keep pushing msgs to kafka until timer finishes
     do {
       val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[Any]]
@@ -158,7 +158,7 @@ object Trucks extends App {
       val isoDateTime = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime))
       val currentValue = data.get(1).asInstanceOf[Double]
       val nextValue = nextData.get(1).asInstanceOf[Double]
-      previousValue= prevData.get(1).asInstanceOf[Double]
+      previousValue = prevData.get(1).asInstanceOf[Double]
 
       if (gapThresholdMilliseconds > 0) {
 
@@ -204,14 +204,15 @@ object Trucks extends App {
 
   /**
     * Single thread task that will launch multiple trucks based on trucksPerThread
+    *
     * @param baseTruckId
     * @param trucksPerThread
     * @param countdownTimer
     */
-  def dispatchTrucks(partitionIdx:Int,baseTruckId: String, trucksPerThread: Int, countdownTimer: CountdownTimer) {
+  def dispatchTrucks(partitionIdx: Int, baseTruckId: String, trucksPerThread: Int, countdownTimer: CountdownTimer) {
 
     var index = new Array[Int](trucksPerThread)
-    for (i <- 0 to trucksPerThread -1) {
+    for (i <- 0 to trucksPerThread - 1) {
       index(i) = randomIndex()
     }
 
@@ -222,11 +223,11 @@ object Trucks extends App {
       var data = new Array[java.util.ArrayList[Any]](trucksPerThread)
       var prevData = new Array[java.util.ArrayList[Any]](trucksPerThread)
       var nextData = new Array[java.util.ArrayList[Any]](trucksPerThread)
-      var currentValue  = new Array[Double](trucksPerThread)
+      var currentValue = new Array[Double](trucksPerThread)
       var nextValue = new Array[Double](trucksPerThread)
-      var previousValue  = new Array[Double](trucksPerThread)
+      var previousValue = new Array[Double](trucksPerThread)
 
-      for (i <- 0 to trucksPerThread -1) {
+      for (i <- 0 to trucksPerThread - 1) {
 
         data(i) = (timeSeries get index(i)).asInstanceOf[java.util.ArrayList[Any]]
         prevData(i) = (timeSeries get (index(i) - 1)).asInstanceOf[java.util.ArrayList[Any]]
@@ -257,7 +258,7 @@ object Trucks extends App {
 
       }
       rateLimiter.acquire()
-      for (i <- 0 to trucksPerThread-1) {
+      for (i <- 0 to trucksPerThread - 1) {
         val truckId = baseTruckId + i.toString
         // send to kafka
         if (TrucksFilter.shouldSend(sendAnomalies, anomalyThreshhold, previousValue(i), currentValue(i), nextValue(i))) {
@@ -267,13 +268,19 @@ object Trucks extends App {
           // java.time.Instant = 2017-02-13T12:14:20.666Z
           val isoDateTime = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime))
           val json =
-          s"""{"truck":"$truckId","_timestamp":"$isoDateTime","channel":"T_motTemp_Lft","value":${data(i).get(1)}}"""
+            s"""{"truck":"$truckId","_timestamp":"$isoDateTime","channel":"T_motTemp_Lft","value":${data(i).get(1)}}"""
           // acquire permit to send, limits to 1 msg a second
+
           config.getPartitionStrategy match {
-            case PartitionStrategy.DEFAULT_KEYED_PARTITION => producer.send(new ProducerRecord[String, AnyRef](config.getTopics, partitionIdx, truckId, json.getBytes(Charset.defaultCharset())))
+            case PartitionStrategy.DEFAULT_KEYED_PARTITION => producer.send(new ProducerRecord[String, AnyRef](
+              config.getTopics, truckId, json.getBytes(Charset.defaultCharset())))
+
+            case PartitionStrategy.SAME_PARTITION_PER_THREAD => producer.send(new ProducerRecord[String, AnyRef](
+              config.getTopics, partitionIdx, truckId, json.getBytes(Charset.defaultCharset())))
 
             // random per transaction which can cause shuffles if order is needed
-            case _ => producer.send(new ProducerRecord[String, AnyRef](config.getTopics, truckId, json.getBytes(Charset.defaultCharset())))
+            case _ => producer.send(new ProducerRecord[String, AnyRef](
+              config.getTopics, truckId, json.getBytes(Charset.defaultCharset())))
           }
 
         } else {
@@ -306,7 +313,7 @@ object TrucksFilter {
                  curData: Double,
                  nextData: Double): Boolean = {
     sendAnomalies || (Math.abs(curData - prevData) < anomalyThreshhold &&
-        Math.abs(curData - nextData) < anomalyThreshhold)
+      Math.abs(curData - nextData) < anomalyThreshhold)
   }
 
 }
