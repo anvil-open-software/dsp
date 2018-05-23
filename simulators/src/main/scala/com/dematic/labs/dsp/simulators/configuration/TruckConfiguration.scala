@@ -24,6 +24,7 @@ object TruckConfiguration {
 
     private val GAP_THRESHOLD_IN_MILLIS="producer.gap.thresholdInMilliseconds"
     private val PRODUCER_PARTITION_STRATEGY = "producer.partition.strategy"
+    private val PRODUCER_RATE_LIMITER_PERMITS_PER_SECOND = "producer.rateLimiter.permitsPerSecond"
 
 
     val truckIdRange: util.List[Integer] = getConfig.getIntList(TRUCK_ID_RANGE)
@@ -37,6 +38,7 @@ object TruckConfiguration {
     val anomaliesFilterThreshhold: Int = getConfig.getInt(ANOMALIES_FILTER_THRESHOLD)
     val gapThresholdInMillis: Long = getConfig.getLong(GAP_THRESHOLD_IN_MILLIS)
     val partitionStrategy: PartitionStrategy = PartitionStrategy.withName(getConfig.getString(PRODUCER_PARTITION_STRATEGY))
+    val rateLimiterPermitsPerSecond: Double = getConfig.getInt(PRODUCER_RATE_LIMITER_PERMITS_PER_SECOND)
 
     override def getThis: TruckConfiguration.Builder = {
       this
@@ -61,6 +63,7 @@ final class TruckConfiguration private[TruckConfiguration](val builder: TruckCon
   private val anomaliesFilterThreshhold:Int = builder.anomaliesFilterThreshhold
   private val gapThresholdInMillis:Long = builder.gapThresholdInMillis
   private val partitionStrategy: PartitionStrategy = builder.partitionStrategy
+  private val rateLimiterPermitsPerSecond:Double = builder.rateLimiterPermitsPerSecond
 
 
   def getTruckIdRange: util.List[Integer] = {
@@ -116,6 +119,10 @@ final class TruckConfiguration private[TruckConfiguration](val builder: TruckCon
 
   def getAnomaliesFilterThreshhold: Int = {
     anomaliesFilterThreshhold
+  }
+
+  def getRateLimiterPermitsPerSecond: Double = {
+    rateLimiterPermitsPerSecond
   }
 
   /**

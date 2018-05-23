@@ -65,6 +65,7 @@ object Trucks extends App {
 
   val sendAnomalies = config.getAnomaliesSend
   val anomalyThreshhold = config.getAnomaliesFilterThreshhold
+  val rateLimiterPermitsPerSecond = config.getRateLimiterPermitsPerSecond
   val gapThresholdMilliseconds = config.getGapThresholdInMillis
 
   import collection.JavaConversions._
@@ -105,6 +106,7 @@ object Trucks extends App {
     countdownTimer.countDown(config.getDurationInMinutes.toInt)
 
     val partitionCount = producer.partitionsFor(config.getTopics).size()
+    val permitsPerSecond = config.getRateLimiterPermitsPerSecond
     // create a list of task that will be dispatched on its own thread
     var tasks: List[Task[Unit]] = List()
     for (truckIdx <- lowTruckRange to highTruckRange) {
@@ -115,7 +117,7 @@ object Trucks extends App {
         } else {
           // randomly generate the partition for that thread
           val partitionId =assignPartitionId(config.getPartitionStrategy,partitionCount,truckIdx)
-          dispatchTrucks(partitionId, s"${config.getId}$truckIdx", trucksPerThread, countdownTimer)
+          dispatchTrucks(partitionId, s"${config.getId}$truckIdx", trucksPerThread, countdownTimer,permitsPerSecond)
         }
       }
     }
@@ -211,7 +213,11 @@ object Trucks extends App {
     * @param trucksPerThread
     * @param countdownTimer
     */
-  def dispatchTrucks(partitionIdx: Int, baseTruckId: String, trucksPerThread: Int, countdownTimer: CountdownTimer) {
+  def dispatchTrucks(partitionIdx: Int,
+                     baseTruckId: String,
+                     trucksPerThread: Int,
+                     countdownTimer: CountdownTimer,
+                     permitsPerSecond: Double ) {
 
     var index = new Array[Int](trucksPerThread)
     for (i <- 0 to trucksPerThread - 1) {
@@ -219,7 +225,7 @@ object Trucks extends App {
     }
 
     // will limit sends to 1 per second
-    val rateLimiter = RateLimiter.create(1, 0, MINUTES) // make configurable if needed
+    val rateLimiter = RateLimiter.create(permitsPerSecond, 0, MINUTES) // make configurable if needed
     // keep pushing msgs to kafka until timer finishes
     do {
       var data = new Array[java.util.ArrayList[Any]](trucksPerThread)
