@@ -112,7 +112,8 @@ object Trucks extends App {
         if (trucksPerThread == 1) {
           dispatchTruck(s"${config.getId}$truckIdx", countdownTimer)
         } else {
-          val partitionId = Math.floorMod(truckIdx, partitionCount)
+          // randomly generate the partition for that thread
+          val partitionId = Random.nextInt(partitionCount)
           dispatchTrucks(partitionId, s"${config.getId}$truckIdx", trucksPerThread, countdownTimer)
         }
       }
