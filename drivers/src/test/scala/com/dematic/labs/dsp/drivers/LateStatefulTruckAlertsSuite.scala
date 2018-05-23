@@ -26,8 +26,8 @@ import scala.concurrent.{Future => ConcurrentTask}
 import scala.language.reflectiveCalls
 import scala.util.{Failure, Success}
 
-class StatefulTruckAlertsSuite extends FunSuite with BeforeAndAfter {
-  val logger: Logger = LoggerFactory.getLogger("StatefulTruckAlertsSuite")
+class LateStatefulTruckAlertsSuite extends FunSuite with BeforeAndAfter {
+  val logger: Logger = LoggerFactory.getLogger("LateStatefulTruckAlertsSuite")
 
   @Rule var checkpoint = new TemporaryFolder
 
@@ -70,45 +70,6 @@ class StatefulTruckAlertsSuite extends FunSuite with BeforeAndAfter {
     task = ConcurrentTask {
       StatefulTruckAlerts.main(Array[String]())
     }
-  }
-
-  test("complete DSP StatefulTruckAlert test, send T_motTemp_Lft json messages to kafka, Spark consumes " +
-    "messages and creates alerts based on the temperature value rising more then 10 degrees, then send alerts to " +
-    "another kafka topic.") {
-
-    // timestamp used for testing
-    val timestamp = DateTime.now()
-
-    // 1) push truck messages to kafka
-    {
-      ConcurrentTask {
-        // create a list of json messages to send
-        val jsonMessages: List[String] = List(
-          s"""{"truck":"H2X3501117","_timestamp":"$timestamp","channel":"T_motTemp_Lft","value":5.0}""",
-          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(1)}","channel":"T_motTemp_Lft","value":10.0}""",
-          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(2)}","channel":"T_motTemp_Lft","value":15.0}""",
-          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(3)}","channel":"T_motTemp_Lft","value":20.0}""",
-          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(4)}","channel":"T_motTemp_Lft","value":25.0}""",
-          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(5)}","channel":"T_motTemp_Lft","value":30.0}""",
-          s"""{"truck":"H2X3501117","_timestamp":"${timestamp.plusSeconds(6)}","channel":"T_motTemp_Lft","value":35.0}"""
-        )
-        new TestTruckProducer(kafkaServer.getKafkaConnect, "linde", jsonMessages)
-      }
-    }
-
-    // 2) poll until alert json is in the output sink topic
-    var totalCount = 0
-    // keep polling until alerts are generated
-    await().atMost(2, TimeUnit.MINUTES).until(new Callable[lang.Boolean] {
-      override def call(): lang.Boolean = {
-        val consumerRecord = kc.poll(1000)
-        // for now just test count, 2 alerts should have been generated, need to test all use cases and variations
-        // on data
-        totalCount = totalCount + consumerRecord.count
-        if (totalCount == 2) return true
-        false // 2 alerts should have been created based on the json sent to the kafka topic
-      }
-    })
   }
 
   test("complete DSP StatefulTruckAlert test, send truck json message that is more then an hour late at " +
