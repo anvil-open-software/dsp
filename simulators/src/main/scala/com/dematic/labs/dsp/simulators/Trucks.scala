@@ -7,6 +7,7 @@ import java.util
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeUnit.MINUTES
 
+import com.dematic.labs.dsp.simulators.configuration.PartitionStrategy.PartitionStrategy
 import com.dematic.labs.dsp.simulators.configuration.{PartitionStrategy, TruckConfiguration}
 import com.dematic.labs.toolkit_bigdata.simulators.CountdownTimer
 import com.google.common.util.concurrent.RateLimiter
@@ -113,7 +114,7 @@ object Trucks extends App {
           dispatchTruck(s"${config.getId}$truckIdx", countdownTimer)
         } else {
           // randomly generate the partition for that thread
-          val partitionId = Random.nextInt(partitionCount)
+          val partitionId =assignPartitionId(config.getPartitionStrategy,partitionCount,truckIdx)
           dispatchTrucks(partitionId, s"${config.getId}$truckIdx", trucksPerThread, countdownTimer)
         }
       }
@@ -296,6 +297,14 @@ object Trucks extends App {
   def randomIndex(): Int = {
     // generate a random index between 1 and half of the time series list
     Random.nextInt(timeSeries.size / 2) + 2
+  }
+  def assignPartitionId(partitionStrategy: PartitionStrategy, partitionCount:Int, truckIdx:Int) : Int = {
+    partitionStrategy match {
+      case PartitionStrategy.SAME_PARTITION_PER_THREAD =>  Math.floorMod(truckIdx, partitionCount)
+      // random terribly uneven
+      case _ => Random.nextInt(partitionCount)
+    }
+
   }
 }
 
