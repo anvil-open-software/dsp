@@ -7,6 +7,7 @@ import java.util
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeUnit.MINUTES
 
+import com.dematic.labs.dsp.simulators.configuration.PartitionStrategy.PartitionStrategy
 import com.dematic.labs.dsp.simulators.configuration.{PartitionStrategy, TruckConfiguration}
 import com.dematic.labs.toolkit_bigdata.simulators.CountdownTimer
 import com.google.common.util.concurrent.RateLimiter
@@ -24,8 +25,11 @@ import scala.util.control.NonFatal
 
 /**
   *
+  * This simulator is meant to be run in parallel
+  *
   * To debug topic directly from kafka, use console consumer, i.e.:
   * $KAFKA_HOME/bin/kafka-console-consumer.sh --bootstrap-server '10.207.222.11:9092,10.207.222.12:9092' --topic icd_truck_temp
+  *
   */
 object Trucks extends App {
   val logger: Logger = LoggerFactory.getLogger("Trucks")
@@ -61,6 +65,7 @@ object Trucks extends App {
 
   val sendAnomalies = config.getAnomaliesSend
   val anomalyThreshhold = config.getAnomaliesFilterThreshhold
+  val rateLimiterPermitsPerSecond = config.getRateLimiterPermitsPerSecond
   val gapThresholdMilliseconds = config.getGapThresholdInMillis
 
   import collection.JavaConversions._
@@ -83,7 +88,10 @@ object Trucks extends App {
     val lowTruckRange: Int = config.getTruckIdRangeLow
     val highTruckRange: Int = config.getTruckIdRangeHigh
     val numOfThreads = highTruckRange - lowTruckRange
-    logger.info("Requested truck range " + lowTruckRange + " to " + highTruckRange)
+    val trucksPerThread = config.getTrucksPerThread
+    logger.info("Requested truck range " + lowTruckRange + " to " + highTruckRange
+      + " with availableProcessors=" + Runtime.getRuntime.availableProcessors)
+
 
     // define the global scheduler and the num and max of threads, will be based on the number of trucks, this could
     // cause thread starvation if too many trucks are defined, also, do not define less threads then the number of cores
@@ -97,11 +105,20 @@ object Trucks extends App {
     val countdownTimer: CountdownTimer = new CountdownTimer
     countdownTimer.countDown(config.getDurationInMinutes.toInt)
 
+    val partitionCount = producer.partitionsFor(config.getTopics).size()
+    val permitsPerSecond = config.getRateLimiterPermitsPerSecond
     // create a list of task that will be dispatched on its own thread
     var tasks: List[Task[Unit]] = List()
-    for (truckId <- lowTruckRange to highTruckRange) {
+    for (truckIdx <- lowTruckRange to highTruckRange) {
       tasks = tasks :+ Task {
-          dispatchTruck(s"${config.getId}$truckId", countdownTimer)
+        // try
+        if (trucksPerThread == 1) {
+          dispatchTruck(s"${config.getId}$truckIdx", countdownTimer)
+        } else {
+          // randomly generate the partition for that thread
+          val partitionId =assignPartitionId(config.getPartitionStrategy,partitionCount,truckIdx)
+          dispatchTrucks(partitionId, s"${config.getId}$truckIdx", trucksPerThread, countdownTimer,permitsPerSecond)
+        }
       }
     }
 
@@ -130,21 +147,22 @@ object Trucks extends App {
 
   def dispatchTruck(truckId: String, countdownTimer: CountdownTimer) {
     var index = randomIndex()
-    var previousValue: Option[Double] = None
-
     // will limit sends to 1 per second
     val rateLimiter = RateLimiter.create(1, 0, MINUTES) // make configurable if needed
+    var previousValue: Double = 0.0
     // keep pushing msgs to kafka until timer finishes
     do {
       val data = (timeSeries get index).asInstanceOf[java.util.ArrayList[Any]]
       val prevData = (timeSeries get (index - 1)).asInstanceOf[java.util.ArrayList[Any]]
       val nextData = (timeSeries get (index + 1)).asInstanceOf[java.util.ArrayList[Any]]
+
       // instead of preserving original time, use simulation time
       val messageTime = System.currentTimeMillis()
       // java.time.Instant = 2017-02-13T12:14:20.666Z
       val isoDateTime = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime))
       val currentValue = data.get(1).asInstanceOf[Double]
       val nextValue = nextData.get(1).asInstanceOf[Double]
+      previousValue = prevData.get(1).asInstanceOf[Double]
 
       if (gapThresholdMilliseconds > 0) {
 
@@ -170,6 +188,7 @@ object Trucks extends App {
       // acquire permit to send, limits to 1 msg a second
       rateLimiter.acquire()
       // send to kafka
+
       if (TrucksFilter.shouldSend(sendAnomalies, anomalyThreshhold, previousValue, currentValue, nextValue)) {
 
         config.getPartitionStrategy match {
@@ -183,13 +202,115 @@ object Trucks extends App {
         logger.warn("Skipping point anomaly for " + truckId + ":" + previousValue + "," + currentValue)
       }
       index = index + 1
-      previousValue = Some(currentValue)
+      previousValue = currentValue
+    } while (!countdownTimer.isFinished)
+  }
+
+  /**
+    * Single thread task that will launch multiple trucks based on trucksPerThread
+    *
+    * @param baseTruckId
+    * @param trucksPerThread
+    * @param countdownTimer
+    */
+  def dispatchTrucks(partitionIdx: Int,
+                     baseTruckId: String,
+                     trucksPerThread: Int,
+                     countdownTimer: CountdownTimer,
+                     permitsPerSecond: Double ) {
+
+    var index = new Array[Int](trucksPerThread)
+    for (i <- 0 to trucksPerThread - 1) {
+      index(i) = randomIndex()
+    }
+
+    // will limit sends to 1 per second
+    val rateLimiter = RateLimiter.create(permitsPerSecond, 0, MINUTES) // make configurable if needed
+    // keep pushing msgs to kafka until timer finishes
+    do {
+      var data = new Array[java.util.ArrayList[Any]](trucksPerThread)
+      var prevData = new Array[java.util.ArrayList[Any]](trucksPerThread)
+      var nextData = new Array[java.util.ArrayList[Any]](trucksPerThread)
+      var currentValue = new Array[Double](trucksPerThread)
+      var nextValue = new Array[Double](trucksPerThread)
+      var previousValue = new Array[Double](trucksPerThread)
+
+      for (i <- 0 to trucksPerThread - 1) {
+
+        data(i) = (timeSeries get index(i)).asInstanceOf[java.util.ArrayList[Any]]
+        prevData(i) = (timeSeries get (index(i) - 1)).asInstanceOf[java.util.ArrayList[Any]]
+        nextData(i) = (timeSeries get (index(i) + 1)).asInstanceOf[java.util.ArrayList[Any]]
+
+        previousValue(i) = prevData(i).get(1).asInstanceOf[Double]
+        currentValue(i) = data(i).get(1).asInstanceOf[Double]
+        nextValue(i) = nextData(i).get(1).asInstanceOf[Double]
+
+        if (gapThresholdMilliseconds > 0) {
+
+          // sleep if actual time between points is more than gapThresholdMilliseconds
+          try {
+
+            val prevHistoryTime = formatter.parse(prevData(i).get(0).asInstanceOf[String]).getTime
+            val currentHistoryTime = formatter.parse(data(i).get(0).asInstanceOf[String]).getTime
+
+            val historicalGapMs = currentHistoryTime - prevHistoryTime
+            if (historicalGapMs > gapThresholdMilliseconds) {
+              logger.warn("Sleeping during gap for " + baseTruckId + i.toString + " for " + historicalGapMs + " ms")
+              Thread.sleep(historicalGapMs)
+            }
+          } catch {
+            case NonFatal(ex) => logger.error("Junk data- InfluxDB time not parseable value=" + currentValue(i), ex)
+          }
+        }
+
+
+      }
+      rateLimiter.acquire()
+      for (i <- 0 to trucksPerThread - 1) {
+        val truckId = baseTruckId + i.toString
+        // send to kafka
+        if (TrucksFilter.shouldSend(sendAnomalies, anomalyThreshhold, previousValue(i), currentValue(i), nextValue(i))) {
+          // create the json
+          // instead of preserving original time, use simulation time
+          val messageTime = System.currentTimeMillis()
+          // java.time.Instant = 2017-02-13T12:14:20.666Z
+          val isoDateTime = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime))
+          val json =
+            s"""{"truck":"$truckId","_timestamp":"$isoDateTime","channel":"T_motTemp_Lft","value":${data(i).get(1)}}"""
+          // acquire permit to send, limits to 1 msg a second
+
+          config.getPartitionStrategy match {
+            case PartitionStrategy.DEFAULT_KEYED_PARTITION => producer.send(new ProducerRecord[String, AnyRef](
+              config.getTopics, truckId, json.getBytes(Charset.defaultCharset())))
+
+            case PartitionStrategy.SAME_PARTITION_PER_THREAD => producer.send(new ProducerRecord[String, AnyRef](
+              config.getTopics, partitionIdx, truckId, json.getBytes(Charset.defaultCharset())))
+
+            // random per transaction which can cause shuffles if order is needed
+            case _ => producer.send(new ProducerRecord[String, AnyRef](
+              config.getTopics, truckId, json.getBytes(Charset.defaultCharset())))
+          }
+
+        } else {
+          logger.warn("Skipping point anomaly for " + truckId + ":" + previousValue(i) + "," + currentValue(i))
+        }
+        index(i) = index(i) + 1
+        previousValue(i) = currentValue(i)
+      }
     } while (!countdownTimer.isFinished)
   }
 
   def randomIndex(): Int = {
     // generate a random index between 1 and half of the time series list
-    Random.nextInt(timeSeries.size / 2) + 1
+    Random.nextInt(timeSeries.size / 2) + 2
+  }
+  def assignPartitionId(partitionStrategy: PartitionStrategy, partitionCount:Int, truckIdx:Int) : Int = {
+    partitionStrategy match {
+      case PartitionStrategy.SAME_PARTITION_PER_THREAD =>  Math.floorMod(truckIdx, partitionCount)
+      // random terribly uneven
+      case _ => Random.nextInt(partitionCount)
+    }
+
   }
 }
 
@@ -204,12 +325,11 @@ object TrucksFilter {
     */
   def shouldSend(sendAnomalies: Boolean,
                  anomalyThreshhold: Int,
-                 prevData: Option[Double],
+                 prevData: Double,
                  curData: Double,
                  nextData: Double): Boolean = {
-    sendAnomalies || prevData.isEmpty ||
-      (Math.abs(curData - prevData.get) < anomalyThreshhold &&
-        Math.abs(curData - nextData) < anomalyThreshhold)
+    sendAnomalies || (Math.abs(curData - prevData) < anomalyThreshhold &&
+      Math.abs(curData - nextData) < anomalyThreshhold)
   }
 
 }
