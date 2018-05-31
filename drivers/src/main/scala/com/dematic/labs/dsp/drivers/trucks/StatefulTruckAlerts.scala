@@ -18,7 +18,7 @@ import scala.collection.mutable.ListBuffer
 
 object StatefulTruckAlerts {
   // alert threshold, default to 10
-  private val THRESHOLD:Int = System.getProperty("driver.alert.threshold", "10").toInt
+  private val THRESHOLD: Int = System.getProperty("driver.alert.threshold", "10").toInt
   // should only be  used with testing
   private var injectedDriverConfiguration: DriverConfiguration = _
 
@@ -191,7 +191,7 @@ object StatefulTruckAlerts {
 
       // Start running the query that prints the session updates to the console
       alerts
-        .selectExpr("to_json(struct(truck, min, max, measurements)) AS value")
+        .selectExpr("truck as key", "to_json(struct(truck, min, max, measurements)) AS value")
         .writeStream
         .format("kafka")
         .queryName("statefulTruckAlerts")
