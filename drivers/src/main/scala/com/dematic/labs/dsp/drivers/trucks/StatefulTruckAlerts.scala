@@ -163,6 +163,7 @@ object StatefulTruckAlerts {
         .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
         .option(config.getKafkaSubscribe, config.getKafkaTopics)
         .option("startingOffsets", config.getKafkaStartingOffsets)
+        .option("maxOffsetsPerTrigger",config.getKafkaMaxOffsetsPerTrigger)
         .load
 
       // define the truck json schema
