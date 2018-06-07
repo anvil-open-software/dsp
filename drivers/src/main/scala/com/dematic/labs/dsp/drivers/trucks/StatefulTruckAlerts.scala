@@ -195,7 +195,7 @@ object StatefulTruckAlerts {
       options.put("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
       options.put("topic", config.getKafkaOutputTopics)
       if (!config.getSparkCheckpointLocation.isEmpty)
-        ("checkpointLocation", config.getSparkCheckpointLocation)
+        options.put("checkpointLocation", config.getSparkCheckpointLocation)
       // Start running the query that prints the session updates to the console
       alerts
         .selectExpr("truck as key", "to_json(struct(truck, min, max, measurements)) AS value")
