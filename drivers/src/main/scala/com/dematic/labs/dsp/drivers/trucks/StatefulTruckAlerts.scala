@@ -2,7 +2,6 @@ package com.dematic.labs.dsp.drivers.trucks
 
 import java.sql.Timestamp
 import java.time.Duration
-import java.util
 import java.util.Locale
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
@@ -191,11 +190,6 @@ object StatefulTruckAlerts {
         flatMapGroupsWithState[TruckState, AlertRow](outputMode(config.getSparkOutputMode),
         GroupStateTimeout.EventTimeTimeout)(updateAlertsAcrossBatch)
 
-      val options = new util.HashMap[String, String]()
-      options.put("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
-      options.put("topic", config.getKafkaOutputTopics)
-      if (!config.getSparkCheckpointLocation.isEmpty)
-        options.put("checkpointLocation", config.getSparkCheckpointLocation)
       // Start running the query that prints the session updates to the console
       alerts
         .selectExpr("truck as key", "to_json(struct(truck, min, max, measurements)) AS value")
@@ -203,7 +197,9 @@ object StatefulTruckAlerts {
         .format("kafka")
         .queryName("statefulTruckAlerts")
         .trigger(ProcessingTime(config.getSparkQueryTrigger))
-        .options(options)
+        .option("kafka.bootstrap.servers", config.getKafkaBootstrapServers)
+        .option("topic", config.getKafkaOutputTopics)
+        .option("checkpointLocation", config.getSparkCheckpointLocation)
         .outputMode(config.getSparkOutputMode)
         .start
       // keep alive
