@@ -52,8 +52,7 @@ object StatefulTruckAlerts {
   private def updateAlertsAcrossBatch(truck: String, newTrucks: Iterator[Truck], state: GroupState[TruckState]): Iterator[AlertRow] = {
     if (state.hasTimedOut) {
       // create final alerts
-      //todo: empty list... null
-      val alerts = createAlerts(state.get.min, List()).alertRows
+      val alerts = createAlerts(state.get.min, List.empty[Truck]).alertRows
       state.remove
       // return the iterator of final alert rows
       alerts
@@ -90,7 +89,7 @@ object StatefulTruckAlerts {
         // calculate alerts if they exist
         if (t.value - newMin.value > THRESHOLD && t._timestamp.after(newMin._timestamp)) {
           // create alert and reset min //todo: call out to influx db
-          alertBuffer += AlertRow(t.truck, Measurement(newMin._timestamp, newMin.value), Measurement(t._timestamp, t.value), List())
+          alertBuffer += AlertRow(t.truck, Measurement(newMin._timestamp, newMin.value), Measurement(t._timestamp, t.value), List.empty[Measurement])
           // reset the min
           newMin = t
         }
