@@ -95,6 +95,8 @@ object StatefulTruckAlerts {
         }
         // current value is < existing min, reset the min
         if (t._timestamp.after(newMin._timestamp) && t.value < newMin.value) newMin = t
+      } else {
+        newMin = t
       }
     })
     newMin
