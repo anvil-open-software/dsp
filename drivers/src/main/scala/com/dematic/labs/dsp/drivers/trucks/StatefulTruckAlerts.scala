@@ -6,6 +6,7 @@ import java.util.Locale
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
+import com.dematic.labs.dsp.tsdb.influxdb.InfluxDBConnector
 import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
@@ -13,10 +14,14 @@ import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.streaming.{GroupState, GroupStateTimeout, OutputMode}
 import org.apache.spark.sql.types.DataTypes.StringType
 import org.apache.spark.sql.types.{DoubleType, StructField, StructType, TimestampType}
+import org.influxdb.dto.Query
+import org.slf4j.{Logger, LoggerFactory}
 
+import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 
 object StatefulTruckAlerts {
+  private val logger: Logger = LoggerFactory.getLogger("StatefulTruckAlerts")
   // alert threshold, default to 10
   private val THRESHOLD: Int = System.getProperty("driver.alert.threshold", "10").toInt
   // should only be  used with testing
@@ -27,7 +32,7 @@ object StatefulTruckAlerts {
   }
 
   // Defines the measurement, alert, and alerts, really just used to define the key in the json
-  private case class Measurement(timestamp: Timestamp, value: Double)
+  private case class Measurement(timestamp: String, value: Double)
 
   // User-defined data type representing the input events
   private case class Truck(truck: String, _timestamp: Timestamp, value: Double)
@@ -83,13 +88,41 @@ object StatefulTruckAlerts {
 
   private def calculateAlerts(min: Truck, trucks: List[Truck], alertBuffer: ListBuffer[AlertRow]): Truck = {
     var newMin: Truck = min
+    val influxDBConnector = InfluxDBConnector.getInfluxDB
 
     trucks.foreach(t => {
-      if (isTimeWithInHour(newMin._timestamp, t._timestamp)) {
+      val currentTime = t._timestamp
+      val currentValue = t.value
+      if (isTimeWithInHour(newMin._timestamp, currentTime)) {
         // calculate alerts if they exist
-        if (t.value - newMin.value > THRESHOLD && t._timestamp.after(newMin._timestamp)) {
-          // create alert and reset min //todo: call out to influx db
-          alertBuffer += AlertRow(t.truck, Measurement(newMin._timestamp, newMin.value), Measurement(t._timestamp, t.value), List.empty[Measurement])
+        if (currentValue - newMin.value > THRESHOLD && currentTime.after(newMin._timestamp)) {
+          // create the lower time boundary
+          val results =
+            influxDBConnector.query(
+              new Query(
+                s"""select time, value from T_motTemp_Lft where truck='${t.truck}' and time >= '$currentTime' - 60m and time <= '$currentTime'""",
+                InfluxDBConnector.getDatabase))
+          //todo: deal with errors and no results
+          // log any errors
+          if (results.hasError) logger.error(results.getError)
+          // create alerts
+          if (!results.getResults.isEmpty) {
+            val nestedResults = results.getResults.get(0)
+            val series = nestedResults.getSeries
+            if (!series.isEmpty) {
+              val singleSeries = series.get(0)
+              val values = singleSeries.getValues
+              if (!values.isEmpty) {
+                // populate the measurements
+                val measurements =
+                  values.toList.map((f: java.util.List[AnyRef]) =>
+                    Measurement(f.get(0).asInstanceOf[String], f.get(1).asInstanceOf[Double])): List[Measurement]
+                // create the alert buffer
+                alertBuffer += AlertRow(t.truck, Measurement(newMin._timestamp.toString, newMin.value),
+                  Measurement(currentTime.toString, currentValue), measurements)
+              }
+            }
+          }
           // reset the min
           newMin = t
         }
