@@ -14,7 +14,7 @@ import org.awaitility.Awaitility.await
 import org.joda.time.DateTime
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
-import org.scalatest.{BeforeAndAfter, FunSuite}
+import org.scalatest.{BeforeAndAfter, FunSuite, Ignore}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -22,6 +22,7 @@ import scala.concurrent.{Future => ConcurrentTask}
 import scala.language.reflectiveCalls
 import scala.util.{Failure, Success}
 
+@Ignore
 class CompleteStatefulTruckAlertsSuite extends FunSuite with BeforeAndAfter {
   val logger: Logger = LoggerFactory.getLogger("CompleteStatefulTruckAlertsSuite")
 
