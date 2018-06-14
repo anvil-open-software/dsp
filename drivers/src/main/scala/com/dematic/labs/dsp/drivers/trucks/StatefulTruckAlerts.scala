@@ -88,6 +88,7 @@ object StatefulTruckAlerts {
 
   private def calculateAlerts(min: Truck, trucks: List[Truck], alertBuffer: ListBuffer[AlertRow]): Truck = {
     var newMin: Truck = min
+
     val influxDBConnector = InfluxDBConnector.getInfluxDB
 
     trucks.foreach(t => {
@@ -102,27 +103,28 @@ object StatefulTruckAlerts {
               new Query(
                 s"""select time, value from T_motTemp_Lft where truck='${t.truck}' and time >= '$currentTime' - 60m and time <= '$currentTime'""",
                 InfluxDBConnector.getDatabase))
-          //todo: deal with errors and no results
           // log any errors
           if (results.hasError) logger.error(results.getError)
+          var measurements = List[Measurement]()
           // create alerts
           if (!results.getResults.isEmpty) {
             val nestedResults = results.getResults.get(0)
             val series = nestedResults.getSeries
-            if (!series.isEmpty) {
+            if (series != null && !series.isEmpty) {
               val singleSeries = series.get(0)
               val values = singleSeries.getValues
-              if (!values.isEmpty) {
+              if (values != null && !values.isEmpty) {
                 // populate the measurements
-                val measurements =
-                  values.toList.map((f: java.util.List[AnyRef]) =>
-                    Measurement(f.get(0).asInstanceOf[String], f.get(1).asInstanceOf[Double])): List[Measurement]
-                // create the alert buffer
-                alertBuffer += AlertRow(t.truck, Measurement(newMin._timestamp.toString, newMin.value),
-                  Measurement(currentTime.toString, currentValue), measurements)
+                measurements = values.toList.map((f: java.util.List[AnyRef]) =>
+                  Measurement(f.get(0).asInstanceOf[String], f.get(1).asInstanceOf[Double])): List[Measurement]
               }
+            } else {
+              logger.error(s"""${t.truck} did not return results for time $currentTime: creating alert without measurements""")
             }
           }
+          // create the alert buffer
+          alertBuffer += AlertRow(t.truck, Measurement(newMin._timestamp.toString, newMin.value),
+            Measurement(currentTime.toString, currentValue), measurements)
           // reset the min
           newMin = t
         }
