@@ -27,31 +27,41 @@ object InfluxDBConnector {
   private val logger: Logger = LoggerFactory.getLogger("InfluxDBConnector")
 
   private val influx_database: String = System.getProperty(InfluxDBConsts.INFLUXDB_DATABASE)
+  private val batch_count: String = System.getProperty(InfluxDBConsts.INFLUXDB_BATCH_COUNT)
 
   // create the connection to influxDb with more generous timeout instead of default 10 seconds
-  val httpClientBuilder: OkHttpClient.Builder = new OkHttpClient.Builder()
+  private val httpClientBuilder: OkHttpClient.Builder = new OkHttpClient.Builder()
     .writeTimeout(120, TimeUnit.SECONDS).connectTimeout(120, TimeUnit.SECONDS)
 
-  val influxDB: InfluxDB = InfluxDBFactory.connect(
-    System.getProperty(InfluxDBConsts.INFLUXDB_URL),
-    System.getProperty(InfluxDBConsts.INFLUXDB_USERNAME),
-    System.getProperty(InfluxDBConsts.INFLUXDB_PASSWORD), httpClientBuilder)
-    .setDatabase(influx_database)
-
-  def batch_count: String = System.getProperty(InfluxDBConsts.INFLUXDB_BATCH_COUNT)
-
-  if (batch_count != null) {
-    influxDB.enableBatch(Integer.valueOf(batch_count),
-      Integer.valueOf(System.getProperty(InfluxDBConsts.INFLUXDB_BATCH_FLUSH_SECONDS)),
-      TimeUnit.SECONDS)
+  private val influxDB: Option[InfluxDB] = {
+    try {
+      Some({
+        val connection = InfluxDBFactory.connect(
+          System.getProperty(InfluxDBConsts.INFLUXDB_URL),
+          System.getProperty(InfluxDBConsts.INFLUXDB_USERNAME),
+          System.getProperty(InfluxDBConsts.INFLUXDB_PASSWORD), httpClientBuilder)
+          .setDatabase(influx_database)
+        // validate the connection
+        connection.ping
+        // validate the database
+        connection.databaseExists(influx_database)
+        // set the batch count if exist
+        if (batch_count != null) influxDB.get.enableBatch(Integer.valueOf(batch_count),
+          Integer.valueOf(System.getProperty(InfluxDBConsts.INFLUXDB_BATCH_FLUSH_SECONDS)), TimeUnit.SECONDS)
+        // return and set connection
+        connection
+      })
+    } catch {
+      case e: Exception => logger.error("Can't connect to InfluxDB", e); None;
+    }
   }
-  if (influxDB.databaseExists(influx_database)) {
-    logger.info("InfluxDB ready to use: " + influx_database)
-  } else {
-    throw new RuntimeException("Database does not exist " + influx_database)
-  }
 
-  def getInfluxDB: InfluxDB = {
+  /**
+    * Get the InfluxDB.
+    *
+    * @return InfluxDB or none if can't make connection
+    */
+  def getInfluxDB: Option[InfluxDB] = {
     influxDB
   }
 
