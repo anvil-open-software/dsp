@@ -33,9 +33,9 @@ object InfluxDBConnector {
   private val httpClientBuilder: OkHttpClient.Builder = new OkHttpClient.Builder()
     .writeTimeout(120, TimeUnit.SECONDS).connectTimeout(120, TimeUnit.SECONDS)
 
-  private val influxDB: Option[InfluxDB] = {
+  private val influxDB: Either[Exception, InfluxDB] = {
     try {
-      Some({
+      try {
         val connection = InfluxDBFactory.connect(
           System.getProperty(InfluxDBConsts.INFLUXDB_URL),
           System.getProperty(InfluxDBConsts.INFLUXDB_USERNAME),
@@ -46,23 +46,36 @@ object InfluxDBConnector {
         // validate the database
         connection.databaseExists(influx_database)
         // set the batch count if exist
-        if (batch_count != null) influxDB.get.enableBatch(Integer.valueOf(batch_count),
-          Integer.valueOf(System.getProperty(InfluxDBConsts.INFLUXDB_BATCH_FLUSH_SECONDS)), TimeUnit.SECONDS)
+        if (batch_count != null)
+          influxDB.right.get.enableBatch(Integer.valueOf(batch_count),
+            Integer.valueOf(System.getProperty(InfluxDBConsts.INFLUXDB_BATCH_FLUSH_SECONDS)), TimeUnit.SECONDS)
         // return and set connection
-        connection
-      })
+        Right(connection)
+      }
     } catch {
-      case e: Exception => logger.error("Can't connect to InfluxDB", e); None;
+      case e: Exception => Left(e);
     }
   }
 
   /**
     * Get the InfluxDB.
     *
-    * @return InfluxDB or none if can't make connection
+    * @return InfluxDB or exception if can't make connection
     */
-  def getInfluxDB: Option[InfluxDB] = {
-    influxDB
+  def getInfluxDbOrException: InfluxDB = {
+    if (influxDB.isRight) influxDB.right.get else throw influxDB.left.get
+  }
+
+  /**
+    * Get the InfluxDB.
+    *
+    * @return InfluxDB or 'null' if can't make connection
+    */
+  def getInfluxDbOrNull: InfluxDB = {
+    if (influxDB.isRight) influxDB.right.get else {
+      logger.error("Can't connect to InfluxDB", influxDB.left.get)
+      null
+    }
   }
 
   def getDatabase: String = influx_database

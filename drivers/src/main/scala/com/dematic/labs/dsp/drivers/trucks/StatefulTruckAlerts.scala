@@ -89,7 +89,7 @@ object StatefulTruckAlerts {
   private def calculateAlerts(min: Truck, trucks: List[Truck], alertBuffer: ListBuffer[AlertRow]): Truck = {
     var newMin: Truck = min
 
-    val influxDBConnector = InfluxDBConnector.getInfluxDB
+    val influxDBConnector = InfluxDBConnector.getInfluxDbOrNull
 
     trucks.foreach(t => {
       val currentTime = t._timestamp
@@ -97,31 +97,35 @@ object StatefulTruckAlerts {
       if (isTimeWithInHour(newMin._timestamp, currentTime)) {
         // calculate alerts if they exist
         if (currentValue - newMin.value > THRESHOLD && currentTime.after(newMin._timestamp)) {
-          // create the lower time boundary
-          val results =
-            influxDBConnector.query(
-              new Query(
-                s"""select time, value from T_motTemp_Lft where truck='${t.truck}' and time >= '$currentTime' - 60m and time <= '$currentTime'""",
-                InfluxDBConnector.getDatabase))
-          // log any errors
-          if (results.hasError) logger.error(results.getError)
+          // empty list of measurements
           var measurements = List[Measurement]()
-          // create alerts
-          if (!results.getResults.isEmpty) {
-            val nestedResults = results.getResults.get(0)
-            val series = nestedResults.getSeries
-            if (series != null && !series.isEmpty) {
-              val singleSeries = series.get(0)
-              val values = singleSeries.getValues
-              if (values != null && !values.isEmpty) {
-                // populate the measurements
-                measurements = values.toList.map((f: java.util.List[AnyRef]) =>
-                  Measurement(f.get(0).asInstanceOf[String], f.get(1).asInstanceOf[Double])): List[Measurement]
+          if (influxDBConnector != null) {
+            // create the lower time boundary
+            val results =
+              influxDBConnector.query(
+                new Query(
+                  s"""select time, value from T_motTemp_Lft where truck='${t.truck}' and time >= '$currentTime' - 60m and time <= '$currentTime'""",
+                  InfluxDBConnector.getDatabase))
+            // log any errors
+            if (results.hasError) logger.error(results.getError)
+            // create alerts
+            if (!results.getResults.isEmpty) {
+              val nestedResults = results.getResults.get(0)
+              val series = nestedResults.getSeries
+              if (series != null && !series.isEmpty) {
+                val singleSeries = series.get(0)
+                val values = singleSeries.getValues
+                if (values != null && !values.isEmpty) {
+                  // populate the measurements
+                  measurements = values.toList.map((f: java.util.List[AnyRef]) =>
+                    Measurement(f.get(0).asInstanceOf[String], f.get(1).asInstanceOf[Double])): List[Measurement]
+                }
+              } else {
+                logger.error(s"""${t.truck} did not return results for time $currentTime: creating alert without measurements""")
               }
-            } else {
-              logger.error(s"""${t.truck} did not return results for time $currentTime: creating alert without measurements""")
             }
           }
+
           // create the alert buffer
           alertBuffer += AlertRow(t.truck, Measurement(newMin._timestamp.toString, newMin.value),
             Measurement(currentTime.toString, currentValue), measurements)

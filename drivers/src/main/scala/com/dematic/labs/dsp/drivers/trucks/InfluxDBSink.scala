@@ -23,7 +23,7 @@ class InfluxDBSink(config:DriverConfiguration) extends ForeachWriter[Row] {
         .tag("jenkins_job",  System.getProperty(MonitorConsts.SPARK_DRIVER_UNIQUE_RUN_ID))
         .tag("cluster_id",System.getProperty(MonitorConsts.SPARK_CLUSTER_ID))
         .build()
-      InfluxDBConnector.getInfluxDB.write( config.getConfigString(InfluxDBConsts.INFLUXDB_DATABASE),
+      InfluxDBConnector.getInfluxDbOrException.write( config.getConfigString(InfluxDBConsts.INFLUXDB_DATABASE),
         InfluxDBConsts.INFLUXDB_RETENTION_POLICY, point)
     }
 
