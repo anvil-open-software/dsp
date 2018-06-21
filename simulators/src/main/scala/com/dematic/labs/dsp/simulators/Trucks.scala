@@ -25,12 +25,13 @@ import scala.util.control.NonFatal
 
 /**
   *
-  * This simulator is meant to be run in parallel
+  * This simulator is meant to be run in parallel along side other jvms on the same and different instances
   *
   * To debug topic directly from kafka, use console consumer, i.e.:
   * $KAFKA_HOME/bin/kafka-console-consumer.sh --bootstrap-server '10.207.222.11:9092,10.207.222.12:9092' --topic icd_truck_temp
   *
   */
+
 object Trucks extends App {
   val logger: Logger = LoggerFactory.getLogger("Trucks")
 
@@ -165,7 +166,6 @@ object Trucks extends App {
       previousValue = prevData.get(1).asInstanceOf[Double]
 
       if (gapThresholdMilliseconds > 0) {
-
         // sleep if actual time between points is more than gapThresholdMilliseconds
         try {
 
@@ -220,14 +220,17 @@ object Trucks extends App {
                      permitsPerSecond: Double ) {
 
     var index = new Array[Int](trucksPerThread)
+    var truckStatesForThread = new Array[TruckSimulationState](trucksPerThread)
     for (i <- 0 to trucksPerThread - 1) {
       index(i) = randomIndex()
+      truckStatesForThread(i)=new TruckSimulationState(i)
     }
 
     // will limit sends to 1 per second
     val rateLimiter = RateLimiter.create(permitsPerSecond, 0, MINUTES) // make configurable if needed
     // keep pushing msgs to kafka until timer finishes
     do {
+      // shove into TruckSimulationState if time
       var data = new Array[java.util.ArrayList[Any]](trucksPerThread)
       var prevData = new Array[java.util.ArrayList[Any]](trucksPerThread)
       var nextData = new Array[java.util.ArrayList[Any]](trucksPerThread)
@@ -246,7 +249,6 @@ object Trucks extends App {
         nextValue(i) = nextData(i).get(1).asInstanceOf[Double]
 
         if (gapThresholdMilliseconds > 0) {
-
           // sleep if actual time between points is more than gapThresholdMilliseconds
           try {
 
@@ -255,24 +257,24 @@ object Trucks extends App {
 
             val historicalGapMs = currentHistoryTime - prevHistoryTime
             if (historicalGapMs > gapThresholdMilliseconds) {
+              truckStatesForThread(i).setGapSleepTime( System.currentTimeMillis(), historicalGapMs)
               logger.warn("Sleeping during gap for " + baseTruckId + i.toString + " for " + historicalGapMs + " ms")
-              Thread.sleep(historicalGapMs)
             }
           } catch {
             case NonFatal(ex) => logger.error("Junk data- InfluxDB time not parseable value=" + currentValue(i), ex)
           }
         }
 
-
       }
       rateLimiter.acquire()
       for (i <- 0 to trucksPerThread - 1) {
         val truckId = baseTruckId + i.toString
+        // instead of preserving original time, use simulation time
+        val messageTime = System.currentTimeMillis()
         // send to kafka
-        if (TrucksFilter.shouldSend(sendAnomalies, anomalyThreshhold, previousValue(i), currentValue(i), nextValue(i))) {
+        if (!(truckStatesForThread(i).needsGapReplay(messageTime)) && TrucksFilter.shouldSend(sendAnomalies, anomalyThreshhold, previousValue(i), currentValue(i), nextValue(i))) {
           // create the json
-          // instead of preserving original time, use simulation time
-          val messageTime = System.currentTimeMillis()
+
           // java.time.Instant = 2017-02-13T12:14:20.666Z
           val isoDateTime = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime))
           val json =
