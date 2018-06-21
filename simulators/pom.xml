@@ -4,7 +4,7 @@
     <parent>
         <groupId>com.dematic.labs</groupId>
         <artifactId>dsp</artifactId>
-        <version>0.1.4-SNAPSHOT</version>
+        <version>0.1.3-DLABS-2159-SNAPSHOT</version>
     </parent>
 
     <groupId>com.dematic.labs.dsp</groupId>
@@ -20,7 +20,7 @@
         <dependency>
             <groupId>com.dematic.labs.dsp</groupId>
             <artifactId>data</artifactId>
-            <version>0.1.4-SNAPSHOT</version>
+            <version>0.1.3-DLABS-2159-SNAPSHOT</version>
         </dependency>
         <!-- event hub client -->
         <dependency>
