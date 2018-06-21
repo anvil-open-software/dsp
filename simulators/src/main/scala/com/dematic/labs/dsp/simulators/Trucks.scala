@@ -258,7 +258,8 @@ object Trucks extends App {
             val historicalGapMs = currentHistoryTime - prevHistoryTime
             if (historicalGapMs > gapThresholdMilliseconds) {
               truckStatesForThread(i).setGapSleepTime( System.currentTimeMillis(), historicalGapMs)
-              logger.warn("Sleeping during gap for " + baseTruckId + i.toString + " for " + historicalGapMs + " ms")
+              logger.warn("Sleep gap" + baseTruckId + i.toString + " for "
+                + historicalGapMs + " ms with prevtime="+prevHistoryTime + " and current=" +currentHistoryTime )
             }
           } catch {
             case NonFatal(ex) => logger.error("Junk data- InfluxDB time not parseable value=" + currentValue(i), ex)
