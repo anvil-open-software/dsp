@@ -73,9 +73,10 @@ object Trucks extends App {
 
   try {
     val queryStartTime = System.currentTimeMillis()
+
     val qr = influxDB.query(new Query(s"SELECT time, value FROM T_motTemp_Lft where time > " +
       s"'${config.getPredicateDateRangeLow}' AND time < '${config.getPredicateDateRangeHigh}' order by ASC",
-      config.getDatabase))
+      config.getDatabase),TimeUnit.MILLISECONDS)
 
     val queryExecutionTime = System.currentTimeMillis() - queryStartTime
     logger.info("influxdb query time=" + queryExecutionTime + " ms, returning rows=" + qr.getResults.size())
@@ -159,6 +160,7 @@ object Trucks extends App {
 
       // instead of preserving original time, use simulation time
       val messageTime = System.currentTimeMillis()
+      // sometimes time unit is "2017-02-03T11:55:50Z" and othertimes nano...
       // java.time.Instant = 2017-02-13T12:14:20.666Z
       val isoDateTime = dateTimeFormatter.format(Instant.ofEpochMilli(messageTime))
       val currentValue = data.get(1).asInstanceOf[Double]
@@ -169,8 +171,8 @@ object Trucks extends App {
         // sleep if actual time between points is more than gapThresholdMilliseconds
         try {
 
-          val prevHistoryTime = formatter.parse(prevData.get(0).asInstanceOf[String]).getTime
-          val currentHistoryTime = formatter.parse(data.get(0).asInstanceOf[String]).getTime
+          val prevHistoryTime = prevData.get(0).asInstanceOf[Double].toLong
+          val currentHistoryTime = data.get(0).asInstanceOf[Double].toLong
 
           val historicalGapMs = currentHistoryTime - prevHistoryTime
           if (historicalGapMs > gapThresholdMilliseconds) {
@@ -252,14 +254,15 @@ object Trucks extends App {
           // sleep if actual time between points is more than gapThresholdMilliseconds
           try {
 
-            val prevHistoryTime = formatter.parse(prevData(i).get(0).asInstanceOf[String]).getTime
-            val currentHistoryTime = formatter.parse(data(i).get(0).asInstanceOf[String]).getTime
+            val prevHistoryTime = prevData(i).get(0).asInstanceOf[Double].toLong
+            val currentHistoryTime = data(i).get(0).asInstanceOf[Double].toLong
 
             val historicalGapMs = currentHistoryTime - prevHistoryTime
             if (historicalGapMs > gapThresholdMilliseconds) {
               truckStatesForThread(i).setGapSleepTime( System.currentTimeMillis(), historicalGapMs)
-              logger.warn("Sleep gap" + baseTruckId + i.toString + " for "
-                + historicalGapMs + " ms with prevtime="+prevHistoryTime + " and current=" +currentHistoryTime )
+              logger.warn("Sleep gap" + baseTruckId + i.toString + " for "  + historicalGapMs + " ms with prevtime="
+                + dateTimeFormatter.format(Instant.ofEpochMilli(prevHistoryTime))
+                 + " and current=" +dateTimeFormatter.format(Instant.ofEpochMilli(currentHistoryTime)))
             }
           } catch {
             case NonFatal(ex) => logger.error("Junk data- InfluxDB time not parseable value=" + currentValue(i), ex)
