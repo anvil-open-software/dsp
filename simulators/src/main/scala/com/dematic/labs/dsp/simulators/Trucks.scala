@@ -275,8 +275,9 @@ object Trucks extends App {
         val truckId = baseTruckId + i.toString
         // instead of preserving original time, use simulation time
         val messageTime = System.currentTimeMillis()
+        val passesAnomalyFilter=TrucksFilter.shouldSend(sendAnomalies, anomalyThreshhold, previousValue(i), currentValue(i), nextValue(i))
         // send to kafka
-        if (!(truckStatesForThread(i).needsGapReplay(messageTime)) && TrucksFilter.shouldSend(sendAnomalies, anomalyThreshhold, previousValue(i), currentValue(i), nextValue(i))) {
+        if (!(truckStatesForThread(i).needsGapReplay(messageTime)) && passesAnomalyFilter) {
           // create the json
 
           // java.time.Instant = 2017-02-13T12:14:20.666Z
@@ -298,7 +299,8 @@ object Trucks extends App {
           }
 
         } else {
-          logger.warn("Skipping point anomaly for " + truckId + ":" + previousValue(i) + "," + currentValue(i))
+           if (!passesAnomalyFilter)
+             logger.warn("Skipping point anomaly for " + truckId + ":" + previousValue(i) + "," + currentValue(i))
         }
         index(i) = index(i) + 1
         previousValue(i) = currentValue(i)
