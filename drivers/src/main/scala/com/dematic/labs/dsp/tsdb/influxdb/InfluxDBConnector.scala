@@ -3,6 +3,7 @@ package com.dematic.labs.dsp.tsdb.influxdb
 import java.util.concurrent.TimeUnit
 
 import okhttp3.OkHttpClient
+import org.influxdb.dto.QueryResult
 import org.influxdb.{InfluxDB, InfluxDBFactory}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -79,4 +80,12 @@ object InfluxDBConnector {
   }
 
   def getDatabase: String = influx_database
+
+  def query(query:String, throwException: Boolean): QueryResult = {
+    if(throwException) {
+      influxDB.isRight
+    }
+    null
+  }
+
 }
