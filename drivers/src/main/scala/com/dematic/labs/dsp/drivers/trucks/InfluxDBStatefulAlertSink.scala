@@ -48,7 +48,7 @@ class InfluxDBStatefulAlertSink(config: DriverConfiguration) extends ForeachWrit
     // time diff in unix milliseconds
     points.point(getPointBuilder("icd_stateful_alert_time", "time_mode","rise_time",maxTime)
       .addField("value", maxTime.getTime-minTime.getTime).build())
-    InfluxDBConnector.getInfluxDB.write(points)
+    InfluxDBConnector.getInfluxDbOrException.write(points)
 
     // array
     val measurements = row.getAs[mutable.WrappedArray[Row]]("measurements")
@@ -58,7 +58,7 @@ class InfluxDBStatefulAlertSink(config: DriverConfiguration) extends ForeachWrit
         .addField("value", row.getAs[Double]("value")).build())
     })
 
-    InfluxDBConnector.getInfluxDB.write(points)
+    InfluxDBConnector.getInfluxDbOrException.write(points)
 
   }
 
