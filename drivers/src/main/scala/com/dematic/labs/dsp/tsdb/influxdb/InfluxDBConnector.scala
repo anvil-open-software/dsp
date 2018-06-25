@@ -32,23 +32,21 @@ object InfluxDBConnector {
 
   private val influxDB: Either[Throwable, InfluxDB] = {
     try {
-      try {
-        val connection = InfluxDBFactory.connect(
-          System.getProperty(InfluxDBConsts.INFLUXDB_URL),
-          System.getProperty(InfluxDBConsts.INFLUXDB_USERNAME),
-          System.getProperty(InfluxDBConsts.INFLUXDB_PASSWORD), httpClientBuilder)
-          .setDatabase(influx_database)
-        // validate the connection
-        connection.ping
-        // validate the database
-        connection.databaseExists(influx_database)
-        // set the batch count if exist
-        if (batch_count != null)
-          influxDB.right.get.enableBatch(Integer.valueOf(batch_count),
-            Integer.valueOf(System.getProperty(InfluxDBConsts.INFLUXDB_BATCH_FLUSH_SECONDS)), TimeUnit.SECONDS)
-        // return and set connection
-        Right(connection)
-      }
+      val connection = InfluxDBFactory.connect(
+        System.getProperty(InfluxDBConsts.INFLUXDB_URL),
+        System.getProperty(InfluxDBConsts.INFLUXDB_USERNAME),
+        System.getProperty(InfluxDBConsts.INFLUXDB_PASSWORD), httpClientBuilder)
+        .setDatabase(influx_database)
+      // validate the connection
+      connection.ping
+      // validate the database
+      connection.databaseExists(influx_database)
+      // set the batch count if exist
+      if (batch_count != null)
+        influxDB.right.get.enableBatch(Integer.valueOf(batch_count),
+          Integer.valueOf(System.getProperty(InfluxDBConsts.INFLUXDB_BATCH_FLUSH_SECONDS)), TimeUnit.SECONDS)
+      // return and set connection
+      Right(connection)
     } catch {
       case t: Throwable => Left(t);
     }
