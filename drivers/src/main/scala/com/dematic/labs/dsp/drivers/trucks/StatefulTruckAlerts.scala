@@ -145,9 +145,9 @@ object StatefulTruckAlerts {
     // driver configuration
     val config = if (injectedDriverConfiguration == null) {
       // production configuration and ensure InfluxDb is configured
-      val returnedConfig = new DefaultDriverConfiguration.Builder().build
+      val build = new DefaultDriverConfiguration.Builder().build
       getInfluxDbOrException // ensure connection can be made
-      returnedConfig
+      build
     } else {
       // most likely unit test injected configuration
       injectedDriverConfiguration
