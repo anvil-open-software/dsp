@@ -3,9 +3,8 @@ package com.dematic.labs.dsp.tsdb.influxdb
 import java.util.concurrent.TimeUnit
 
 import okhttp3.OkHttpClient
-import org.influxdb.dto.QueryResult
+import org.influxdb.dto.{Query, QueryResult}
 import org.influxdb.{InfluxDB, InfluxDBFactory}
-import org.slf4j.{Logger, LoggerFactory}
 
 /**
   * Singleton for each jvm to batch influxdb requests
@@ -24,9 +23,6 @@ object InfluxDBConsts {
 }
 
 object InfluxDBConnector {
-
-  private val logger: Logger = LoggerFactory.getLogger("InfluxDBConnector")
-
   private val influx_database: String = System.getProperty(InfluxDBConsts.INFLUXDB_DATABASE)
   private val batch_count: String = System.getProperty(InfluxDBConsts.INFLUXDB_BATCH_COUNT)
 
@@ -34,7 +30,7 @@ object InfluxDBConnector {
   private val httpClientBuilder: OkHttpClient.Builder = new OkHttpClient.Builder()
     .writeTimeout(120, TimeUnit.SECONDS).connectTimeout(120, TimeUnit.SECONDS)
 
-  private val influxDB: Either[Exception, InfluxDB] = {
+  private val influxDB: Either[Throwable, InfluxDB] = {
     try {
       try {
         val connection = InfluxDBFactory.connect(
@@ -54,7 +50,7 @@ object InfluxDBConnector {
         Right(connection)
       }
     } catch {
-      case e: Exception => Left(e);
+      case t: Throwable => Left(t);
     }
   }
 
@@ -67,25 +63,13 @@ object InfluxDBConnector {
     if (influxDB.isRight) influxDB.right.get else throw influxDB.left.get
   }
 
-  /**
-    * Get the InfluxDB.
-    *
-    * @return InfluxDB or 'null' if can't make connection
-    */
-  def getInfluxDbOrNull: InfluxDB = {
-    if (influxDB.isRight) influxDB.right.get else {
-      logger.error("Can't connect to InfluxDB", influxDB.left.get)
-      null
-    }
-  }
-
   def getDatabase: String = influx_database
 
-  def query(query:String, throwException: Boolean): QueryResult = {
-    if(throwException) {
-      influxDB.isRight
+  def query(query: String): Either[Throwable, QueryResult] = {
+    try {
+      Right(getInfluxDbOrException.query(new Query(query, getDatabase)))
+    } catch {
+      case t: Throwable => Left(t)
     }
-    null
   }
-
 }

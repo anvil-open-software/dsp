@@ -6,7 +6,7 @@ import java.util.Locale
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
-import com.dematic.labs.dsp.tsdb.influxdb.InfluxDBConnector
+import com.dematic.labs.dsp.tsdb.influxdb.InfluxDBConnector.query
 import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
@@ -14,7 +14,6 @@ import org.apache.spark.sql.streaming.Trigger.ProcessingTime
 import org.apache.spark.sql.streaming.{GroupState, GroupStateTimeout, OutputMode}
 import org.apache.spark.sql.types.DataTypes.StringType
 import org.apache.spark.sql.types.{DoubleType, StructField, StructType, TimestampType}
-import org.influxdb.dto.Query
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConversions._
@@ -89,8 +88,6 @@ object StatefulTruckAlerts {
   private def calculateAlerts(min: Truck, trucks: List[Truck], alertBuffer: ListBuffer[AlertRow]): Truck = {
     var newMin: Truck = min
 
-    val influxDBConnector = InfluxDBConnector.getInfluxDbOrNull
-
     trucks.foreach(t => {
       val currentTime = t._timestamp
       val currentValue = t.value
@@ -99,14 +96,12 @@ object StatefulTruckAlerts {
         if (currentValue - newMin.value > THRESHOLD && currentTime.after(newMin._timestamp)) {
           // empty list of measurements
           var measurements = List[Measurement]()
-          if (influxDBConnector != null) {
-            // create the lower time boundary
-            val results =
-              influxDBConnector.query(
-                new Query(
-                  s"""select time, value from T_motTemp_Lft where truck='${t.truck}' and time >= '$currentTime' - 60m and time <= '$currentTime'""",
-                  InfluxDBConnector.getDatabase))
-            // log any errors
+          // get results of log exception and continue
+          val either =
+            query(s"""select time, value from T_motTemp_Lft where truck='${t.truck}' and time >= '$currentTime' - 60m and time <= '$currentTime'""")
+          if (either.isRight) {
+            val results = either.right.get
+            // log any errors that come from the query api
             if (results.hasError) logger.error(results.getError)
             // create alerts
             if (!results.getResults.isEmpty) {
@@ -124,8 +119,10 @@ object StatefulTruckAlerts {
                 logger.error(s"""${t.truck} did not return results for time $currentTime: creating alert without measurements""")
               }
             }
+          } else {
+            // log unexpected errors and continue
+            logger.error("unexpected error querying InfluxDB", either.left.get)
           }
-
           // create the alert buffer
           alertBuffer += AlertRow(t.truck, Measurement(newMin._timestamp.toString, newMin.value),
             Measurement(currentTime.toString, currentValue), measurements)
