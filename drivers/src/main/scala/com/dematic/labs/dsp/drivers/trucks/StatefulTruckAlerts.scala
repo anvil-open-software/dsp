@@ -6,7 +6,7 @@ import java.util.Locale
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
 import com.dematic.labs.dsp.drivers.configuration.{DefaultDriverConfiguration, DriverConfiguration}
-import com.dematic.labs.dsp.tsdb.influxdb.InfluxDBConnector.query
+import com.dematic.labs.dsp.tsdb.influxdb.InfluxDBConnector.{getInfluxDbOrException, query}
 import com.google.common.base.Strings
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
@@ -144,8 +144,12 @@ object StatefulTruckAlerts {
   def main(args: Array[String]) {
     // driver configuration
     val config = if (injectedDriverConfiguration == null) {
-      new DefaultDriverConfiguration.Builder().build
+      // production configuration and ensure InfluxDb is configured
+      val returnedConfig = new DefaultDriverConfiguration.Builder().build
+      getInfluxDbOrException // ensure connection can be made
+      returnedConfig
     } else {
+      // most likely unit test injected configuration
       injectedDriverConfiguration
     }
 
