@@ -31,7 +31,7 @@ object StatefulTruckAlerts {
   }
 
   // Defines the measurement, alert, and alerts, really just used to define the key in the json
-  private case class Measurement(timestamp: String, value: Double)
+  private case class Measurement(timestamp: Timestamp, value: Double)
 
   // User-defined data type representing the input events
   private case class Truck(truck: String, _timestamp: Timestamp, value: Double)
@@ -113,7 +113,7 @@ object StatefulTruckAlerts {
                 if (values != null && !values.isEmpty) {
                   // populate the measurements
                   measurements = values.toList.map((f: java.util.List[AnyRef]) =>
-                    Measurement(f.get(0).asInstanceOf[String], f.get(1).asInstanceOf[Double])): List[Measurement]
+                    Measurement(f.get(0).asInstanceOf[Timestamp], f.get(1).asInstanceOf[Double])): List[Measurement]
                 }
               } else {
                 logger.error(s"""${t.truck} did not return results for time $currentTime: creating alert without measurements""")
@@ -124,8 +124,8 @@ object StatefulTruckAlerts {
             logger.error("unexpected error querying InfluxDB", either.left.get)
           }
           // create the alert buffer
-          alertBuffer += AlertRow(t.truck, Measurement(newMin._timestamp.toString, newMin.value),
-            Measurement(currentTime.toString, currentValue), measurements)
+          alertBuffer +=
+            AlertRow(t.truck, Measurement(newMin._timestamp, newMin.value), Measurement(currentTime, currentValue), measurements)
           // reset the min
           newMin = t
         }
