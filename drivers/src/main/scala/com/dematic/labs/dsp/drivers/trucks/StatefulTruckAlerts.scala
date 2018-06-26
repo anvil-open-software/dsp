@@ -1,7 +1,7 @@
 package com.dematic.labs.dsp.drivers.trucks
 
 import java.sql.Timestamp
-import java.time.Duration
+import java.time.{Duration, Instant}
 import java.util.Locale
 
 import com.dematic.labs.analytics.monitor.spark.{MonitorConsts, PrometheusStreamingQueryListener}
@@ -113,7 +113,7 @@ object StatefulTruckAlerts {
                 if (values != null && !values.isEmpty) {
                   // populate the measurements
                   measurements = values.toList.map((f: java.util.List[AnyRef]) =>
-                    Measurement(f.get(0).asInstanceOf[Timestamp], f.get(1).asInstanceOf[Double])): List[Measurement]
+                    Measurement(Timestamp.from(Instant.parse(f.get(0).asInstanceOf[String])), f.get(1).asInstanceOf[Double])): List[Measurement]
                 }
               } else {
                 logger.error(s"""${t.truck} did not return results for time $currentTime: creating alert without measurements""")
