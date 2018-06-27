@@ -41,16 +41,17 @@ object InfluxDBConnector {
       connection.ping
       // validate the database
       connection.databaseExists(influx_database)
-      // set the batch count if exist
-      if (batch_count != null)
-        influxDB.right.get.enableBatch(Integer.valueOf(batch_count),
-          Integer.valueOf(System.getProperty(InfluxDBConsts.INFLUXDB_BATCH_FLUSH_SECONDS)), TimeUnit.SECONDS)
       // return and set connection
       Right(connection)
     } catch {
       case t: Throwable => Left(t);
     }
   }
+
+  // set the batch count if exist
+  if (batch_count != null)
+    influxDB.right.get.enableBatch(Integer.valueOf(batch_count),
+      Integer.valueOf(System.getProperty(InfluxDBConsts.INFLUXDB_BATCH_FLUSH_SECONDS)), TimeUnit.SECONDS)
 
   /**
     * Get the InfluxDB.
