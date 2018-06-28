@@ -14,7 +14,7 @@ import com.google.common.util.concurrent.RateLimiter
 import monix.eval.Task
 import okhttp3.OkHttpClient
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
-import org.influxdb.dto.Query
+import org.influxdb.dto.{Query, QueryResult}
 import org.influxdb.{InfluxDB, InfluxDBFactory}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -74,9 +74,9 @@ object Trucks extends App {
   try {
     val queryStartTime = System.currentTimeMillis()
 
-    val qr = influxDB.query(new Query(s"SELECT time, value FROM T_motTemp_Lft where time > " +
-      s"'${config.getPredicateDateRangeLow}' AND time < '${config.getPredicateDateRangeHigh}' order by ASC",
-      config.getDatabase),TimeUnit.MILLISECONDS)
+    // retry, hard code until necessary
+    logger.info("Attempting influxdb truck query")
+    val qr:QueryResult = queryWithRetry(6)
 
     val queryExecutionTime = System.currentTimeMillis() - queryStartTime
     logger.info("influxdb query time=" + queryExecutionTime + " ms, returning rows=" + qr.getResults.size())
@@ -207,6 +207,24 @@ object Trucks extends App {
       previousValue = currentValue
     } while (!countdownTimer.isFinished)
   }
+
+  @annotation.tailrec
+  def queryWithRetry(n: Int): QueryResult = {
+    try {
+      val qr:QueryResult= influxDB.query(new Query(s"SELECT time, value FROM T_motTemp_Lft where time > " +
+        s"'${config.getPredicateDateRangeLow}' AND time < '${config.getPredicateDateRangeHigh}' order by ASC",
+        config.getDatabase),TimeUnit.MILLISECONDS)
+      return qr
+    } catch {
+      case t: Throwable =>
+        if (n < 1) throw new RuntimeException("InfluxDB query Exception Error:", t)
+        else logger.warn("InfluxDB Query failed with #" +n +  " retries left " +t)
+    }
+    // probably should sleep with exponential backoff but the timeout is already high
+    logger.warn("Attempting InfluxDB retry")
+    queryWithRetry(n - 1)
+  }
+
 
   /**
     * Single thread task that will launch multiple trucks based on trucksPerThread
