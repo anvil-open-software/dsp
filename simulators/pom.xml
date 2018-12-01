@@ -15,7 +15,7 @@
         <dependency>
             <groupId>com.dematic.labs.toolkit_bigdata</groupId>
             <artifactId>simulators</artifactId>
-            <version>1.0.14</version>
+            <version>1.0.17-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.dematic.labs.dsp</groupId>
