@@ -1,7 +1,12 @@
+/*
+ * Copyright 2018 Dematic, Corp.
+ * Licensed under the MIT Open Source License: https://opensource.org/licenses/MIT
+ */
+
 package com.dematic.labs.dsp.simulators.dictionary
 
 object Channel {
-  val channel = Map(
+  val channel: Map[String, ChannelDefinition] = Map(
     "TruckForce_N" -> new ChannelDefinition(0, 50000, "N"),
     "TSteerAngle" -> new ChannelDefinition(-120, 120, "deg"),
     "TruckSpeed" -> new ChannelDefinition(-25, 25, "km/h"),

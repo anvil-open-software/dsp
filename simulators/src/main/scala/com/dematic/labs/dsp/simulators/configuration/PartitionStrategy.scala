@@ -1,3 +1,8 @@
+/*
+ * Copyright 2018 Dematic, Corp.
+ * Licensed under the MIT Open Source License: https://opensource.org/licenses/MIT
+ */
+
 /**
   *  How a messages will be mapped to Kafka partition when partition count > 1
   *  1. random_per_request - good for maintaining load if use case permits

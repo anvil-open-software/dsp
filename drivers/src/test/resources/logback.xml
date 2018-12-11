@@ -1,3 +1,8 @@
+<!--
+  ~ Copyright 2018 Dematic, Corp.
+  ~ Licensed under the MIT Open Source License: https://opensource.org/licenses/MIT
+  -->
+
 <configuration>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <!-- encoders are assigned the type

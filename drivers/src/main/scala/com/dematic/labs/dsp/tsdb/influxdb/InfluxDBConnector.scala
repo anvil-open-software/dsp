@@ -1,3 +1,8 @@
+/*
+ * Copyright 2018 Dematic, Corp.
+ * Licensed under the MIT Open Source License: https://opensource.org/licenses/MIT
+ */
+
 package com.dematic.labs.dsp.tsdb.influxdb
 
 import java.util.concurrent.TimeUnit
